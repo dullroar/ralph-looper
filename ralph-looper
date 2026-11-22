@@ -1,0 +1,226 @@
+#!/usr/bin/env bash
+# Run me when: I want to run, resume, pause or check the steps of a plan in a repository that
+# uses the repo-template layout (plans/<plan>/goal.md, plan.md, steps/*.md).
+#
+# Usage: ralph-looper --repo PATH --plan NAME [--agent claude|codex|copilot|local]
+#                     [--jobs N] [--on-limit wait|handoff] [--max-iterations N]
+#        ralph-looper --repo PATH --plan NAME --status | --pause | --resume
+#
+# State: plan and step files are in Git (branch plan/<plan>). Everything else (log, usage ledger,
+# locks, worktrees) is in ${RALPH_WORK:-$HOME/repo-work}/<repo>/<plan>/ . Never inside the repo.
+# You can kill this script at any time. Run it again, with any agent, to continue.
+# Exit codes: 0 all steps done, 3 already running, 10 stopped early, 11 blocked, 75 usage limit (handoff).
+set -uo pipefail
+
+HERE="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+# shellcheck source=lib/agents.sh
+. "$HERE/lib/agents.sh"
+
+repo="." plan="" agent="${RALPH_AGENT:-claude}" jobs=1 on_limit=wait max_iter=1000 mode=run
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --repo) repo="$2"; shift 2 ;;
+    --plan) plan="$2"; shift 2 ;;
+    --agent) agent="$2"; shift 2 ;;
+    --agent=*) agent="${1#*=}"; shift ;;
+    --jobs) jobs="$2"; shift 2 ;;
+    --on-limit) on_limit="$2"; shift 2 ;;
+    --max-iterations) max_iter="$2"; shift 2 ;;
+    --status|--pause|--resume) mode="${1#--}"; shift ;;
+    -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
+    *) echo "ralph-looper: unknown argument '$1'" >&2; exit 2 ;;
+  esac
+done
+[ -n "$plan" ] || { echo "ralph-looper: --plan is required" >&2; exit 2; }
+REPO="$(git -C "$repo" rev-parse --show-toplevel)" || exit 2
+REPO_NAME="$(basename "$REPO")"
+WORK="${RALPH_WORK:-$HOME/repo-work}/$REPO_NAME/$plan"
+WT="$WORK/worktrees"; PWT="$WT/_plan"; BRANCH="plan/$plan"
+PICK="python3 -I $HERE/lib/pick_step.py"
+mkdir -p "$WORK/logs" "$WORK/results" "$WORK/attempts" "$WT"
+LEDGER="$WORK/ledger.jsonl"
+
+case "$mode" in
+  pause) touch "$WORK/PAUSE"; echo "paused: $WORK/PAUSE"; exit 0 ;;
+  resume) rm -f "$WORK/PAUSE"; echo "resumed"; exit 0 ;;
+esac
+
+# ---- plan branch and its worktree ----
+git -C "$REPO" worktree prune
+if ! git -C "$REPO" rev-parse -q --verify "refs/heads/$BRANCH" >/dev/null; then
+  git -C "$REPO" branch "$BRANCH" HEAD || exit 2
+fi
+if [ ! -d "$PWT" ]; then git -C "$REPO" worktree add -q "$PWT" "$BRANCH" || exit 2; fi
+PLAN_DIR="$PWT/plans/$plan"
+[ -d "$PLAN_DIR/steps" ] || { echo "ralph-looper: no $PLAN_DIR/steps on branch $BRANCH" >&2; exit 2; }
+
+if [ "$mode" = status ]; then
+  $PICK summary "$PLAN_DIR"; echo "work dir: $WORK"
+  [ -f "$WORK/PAUSE" ] && echo "PAUSED"
+  [ -f "$LEDGER" ] && tail -n 3 "$LEDGER" | cut -c1-300
+  exit 0
+fi
+
+cfg() {  # cfg key default : flat `key: value` lines in plans/<plan>/loop.yaml
+  local v=""
+  [ -f "$PLAN_DIR/loop.yaml" ] && v="$(grep -E "^$1:" "$PLAN_DIR/loop.yaml" | head -n1 | sed -E 's/^[^:]+:[[:space:]]*//; s/^"(.*)"$/\1/; s/[[:space:]]+#.*$//')"
+  printf '%s' "${v:-$2}"
+}
+STEP_TIMEOUT_MIN="${STEP_TIMEOUT_MIN:-$(cfg step_timeout_minutes 45)}"
+MAX_ATTEMPTS="${MAX_ATTEMPTS:-$(cfg max_attempts 3)}"
+GATE_TIMEOUT_MIN="${GATE_TIMEOUT_MIN:-$(cfg gate_timeout_minutes 15)}"
+MAX_USD="${MAX_USD:-$(cfg max_usd 0)}"            # 0 = no cap
+MAX_STEP_USD="$(cfg max_step_usd 6)"
+[ "$jobs" = 1 ] && jobs="$(cfg jobs 1)"
+export RALPH_AGENT="$agent"
+
+# ---- single instance (the lock fd is closed for children, so a killed driver frees it) ----
+exec 9>"$WORK/.lock"
+flock -n 9 || { echo "ralph-looper: another loop runs for $REPO_NAME/$plan (lock held)." >&2; exit 3; }
+exec > >(tee -a "$WORK/driver.out" 9>&-) 2>&1
+
+unset GH_TOKEN GITHUB_TOKEN GITLAB_TOKEN
+export GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=/bin/false
+DEFAULT_CMD="$(agent_cmd "$agent")" || exit 2
+AGENT_CMD="${AGENT_CMD:-$DEFAULT_CMD}"
+
+say() { printf 'ralph-looper: %s\n' "$*"; }
+spent_usd() { python3 -I -c '
+import json,sys
+t=0.0
+try:
+    for l in open(sys.argv[1]):
+        if l.strip(): t+=float(json.loads(l).get("cost_usd") or 0)
+except FileNotFoundError: pass
+print(f"{t:.4f}")' "$LEDGER"; }
+
+step_file_in() { printf '%s/plans/%s/steps/%s.md' "$1" "$plan" "$2"; }
+
+# ---- run one step (runs in a background subshell; prints its output in one piece) ----
+run_step() {
+  local sid="$1" swt="$WT/$1" br="step/$plan/$1" tier model effort attempts out rc start secs head_before prompt buf gate
+  if [ ! -d "$swt" ]; then
+    git -C "$REPO" worktree add -q -B "$br" "$swt" "$BRANCH" || { echo "fail" > "$WORK/results/$sid"; return; }
+    buf="starting step $sid (new worktree)"
+  else
+    buf="resuming step $sid (worktree exists: previous run stopped)"
+  fi
+  local sfile; sfile="$(step_file_in "$swt" "$sid")"
+  tier="$($PICK field "$sfile" tier)"; tier="${tier:-standard}"
+  [ "$(cat "$WORK/attempts/$sid" 2>/dev/null || echo 0)" -ge 1 ] && tier=standard
+  model="$(cfg "${agent}_model_${tier}" "")"; effort="$(cfg "${agent}_effort_${tier}" "")"
+  export RALPH_MODEL="$model" RALPH_EFFORT="$effort" RALPH_TIER="$tier" RALPH_STEP="$sid" RALPH_PLAN="$plan"
+  export RALPH_EFFORT_CFG=""
+  [ "$agent" = codex ] && [ -n "$effort" ] && RALPH_EFFORT_CFG="model_reasoning_effort=\"$effort\""
+  attempts="$(cat "$WORK/attempts/$sid" 2>/dev/null || echo 0)"
+  buf+=$'\n'"step=$sid agent=$agent tier=$tier model=${model:-cli-default} effort=${effort:-default} attempts=$attempts"
+
+  prompt="$WORK/logs/prompt-$sid.md"
+  sed -e "s/{{PLAN}}/$plan/g" -e "s/{{STEP}}/$sid/g" "$HERE/lib/PROMPT.md" > "$prompt"
+  out="$WORK/logs/$sid-$(date +%Y%m%dT%H%M%S).json"
+  head_before="$(git -C "$swt" rev-parse HEAD)"
+  start=$(date +%s)
+  ( cd "$swt" && timeout "${STEP_TIMEOUT_MIN}m" bash -c "$AGENT_CMD" < "$prompt" > "$out" 2> "$out.err" )
+  rc=$?
+  secs=$(( $(date +%s) - start ))
+  local ublock
+  ublock="$(python3 -I "$HERE/lib/usage.py" --agent "$agent" --out "$out" --ledger "$LEDGER" --rc "$rc" \
+      --seconds "$secs" --step "$sid" --tier "$tier" --model "$model" --effort "$effort" \
+      --head-before "$head_before" --cwd "$swt")"
+  buf+=$'\n'"$ublock"
+  if grep -q '^outcome: limit' <<< "$ublock"; then
+    echo limit > "$WORK/results/$sid"; printf '%s\n' "$buf"; return
+  fi
+
+  # ---- verify: the driver runs the gate itself. It does not trust the agent's word. ----
+  gate="$($PICK field "$sfile" gate)"
+  if [ -n "$gate" ] && ( cd "$swt" && timeout "${GATE_TIMEOUT_MIN}m" bash -c "$gate" ) > "$WORK/logs/gate-$sid.out" 2>&1; then
+    $PICK set "$sfile" status done
+    $PICK set "$sfile" claimed_by "$agent ${model:-cli-default}"
+    $PICK set "$sfile" claimed_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    $PICK set "$sfile" evidence "gate passed $(date -u +%Y-%m-%d) (driver-verified)"
+    git -C "$swt" add -A && git -C "$swt" commit -q -m "plan($plan): $sid done" || true
+    if ( flock 8; git -C "$PWT" merge --no-ff -q -m "plan($plan): merge $sid" "$br" ) 8>"$WORK/merge.lock" 2>>"$WORK/logs/merge.err"; then
+      git -C "$REPO" worktree remove --force "$swt"; git -C "$REPO" branch -q -D "$br"
+      rm -f "$WORK/attempts/$sid"; echo done > "$WORK/results/$sid"
+      buf+=$'\n'"result: $sid done (gate passed, merged into $BRANCH)"
+    else
+      git -C "$PWT" merge --abort 2>/dev/null
+      echo $((attempts+1)) > "$WORK/attempts/$sid"; echo fail > "$WORK/results/$sid"
+      buf+=$'\n'"result: $sid MERGE CONFLICT (see logs/merge.err); worktree kept"
+    fi
+  else
+    echo $((attempts+1)) > "$WORK/attempts/$sid"; echo fail > "$WORK/results/$sid"
+    buf+=$'\n'"result: $sid gate FAILED (rc=$rc, attempt $((attempts+1))/$MAX_ATTEMPTS; see logs/gate-$sid.out)"
+    if [ $((attempts+1)) -ge "$MAX_ATTEMPTS" ]; then
+      $PICK set "$PLAN_DIR/steps/$sid.md" status blocked
+      ( flock 8; git -C "$PWT" add -A && git -C "$PWT" commit -q -m "plan($plan): $sid blocked after $MAX_ATTEMPTS attempts" ) 8>"$WORK/merge.lock"
+      buf+=$'\n'"result: $sid marked blocked"
+    fi
+  fi
+  printf '%s\n' "$buf"
+}
+
+# ---- main loop ----
+say "start: repo=$REPO_NAME plan=$plan agent=$agent jobs=$jobs work=$WORK"
+iter=0 stall=0 result=0
+while :; do
+  [ -f "$WORK/PAUSE" ] && { say "PAUSE found. Run --resume."; result=10; break; }
+  [ -f "$WORK/STOP" ] && { say "STOP found."; result=10; break; }
+  [ "$iter" -ge "$max_iter" ] && { say "iteration budget reached"; result=10; break; }
+  if [ "$MAX_USD" != 0 ] && python3 -I -c "import sys; sys.exit(0 if float('$(spent_usd)')>=float('$MAX_USD') else 1)"; then
+    say "cost cap reached (\$$MAX_USD)"; result=10; break
+  fi
+
+  # steps whose worktree exists and that are not done on the plan branch: resume first
+  active=()
+  for d in "$WT"/*/; do
+    sid="$(basename "$d")"; [ "$sid" = _plan ] && continue
+    st="$($PICK field "$(step_file_in "$PWT" "$sid")" status 2>/dev/null)"
+    if [ "$st" = done ]; then git -C "$REPO" worktree remove --force "$d"; git -C "$REPO" branch -q -D "step/$plan/$sid" 2>/dev/null; continue; fi
+    [ "$st" = blocked ] && continue
+    active+=("$sid")
+  done
+  active=("${active[@]:0:$jobs}")
+  batch=("${active[@]}")
+  if [ "${#batch[@]}" -lt "$jobs" ]; then
+    while IFS= read -r line; do
+      [ -n "$line" ] && batch+=("$(python3 -I -c 'import json,sys; print(json.loads(sys.argv[1])["id"])' "$line")")
+    done < <($PICK ready "$PLAN_DIR" --max "$jobs" --active "$(IFS=,; echo "${active[*]:-}")")
+  fi
+  if [ "${#batch[@]}" -eq 0 ]; then
+    summary="$($PICK summary "$PLAN_DIR")"; code=$?
+    say "no step to run: $summary"
+    case $code in 0) say "ALL STEPS DONE"; result=0 ;; *) say "BLOCKED or waiting"; result=11 ;; esac
+    break
+  fi
+
+  iter=$((iter+1))
+  say "batch $iter: ${batch[*]}"
+  pids=()
+  for sid in "${batch[@]}"; do
+    run_step "$sid" 9>&- &
+    pids+=($!)
+  done
+  wait "${pids[@]}"   # not a bare `wait`: that would also wait for the tee process
+  limited=0; progressed=0
+  for sid in "${batch[@]}"; do
+    r="$(cat "$WORK/results/$sid" 2>/dev/null)"
+    [ "$r" = limit ] && limited=1
+    [ "$r" = done ] && progressed=1
+  done
+  say "batch $iter finished; spent \$$(spent_usd)"
+  if [ "$limited" = 1 ]; then
+    if [ "$on_limit" = handoff ]; then
+      say "$agent hit a usage limit. Run again with another agent: --agent claude|codex|copilot"; result=75; break
+    fi
+    remaining="${LIMIT_SLEEP_SECS:-900}"; say "usage limit: sleeping ${remaining}s"
+    while [ "$remaining" -gt 0 ] && [ ! -f "$WORK/PAUSE" ] && [ ! -f "$WORK/STOP" ]; do sleep 5; remaining=$((remaining-5)); done
+    iter=$((iter-1)); continue
+  fi
+  if [ "$progressed" = 0 ]; then stall=$((stall+1)); else stall=0; fi
+  [ "$stall" -ge "${MAX_STALL:-6}" ] && { say "stall breaker: $stall batches without progress"; result=11; break; }
+  sleep "${SLEEP_SECS:-1}"
+done
+say "finished (exit $result). spent \$$(spent_usd). log: $WORK/driver.out"
+exit "$result"
