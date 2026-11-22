@@ -1,12 +1,14 @@
 ---
 id: 02-verify-rollout
-status: pending
+status: done
 depends_on: [01-prepare-launcher]
 touches:
   - plans/ralphify-repositories/steps/02-verify-rollout.md
 lane: none
 gate: python3 plans/ralphify-repositories/rollout.py verify && python3 scripts/check_context.py && git diff --check
-evidence: ""
+evidence: gate passed 2026-11-22 (driver-verified)
+claimed_by: codex cli-default
+claimed_at: "2026-11-22T22:41:58Z"
 ---
 
 # Verify all ten target plan branches
