@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Run me when: I want an off-machine backup of plan work while ralph-looper runs, or after it stops.
+# It pushes only the plan branch (plan/<plan>) and the step branches (step/<plan>/*) to a remote.
+# Why separate: the agents and the driver have no credentials and may not push. YOU run the
+# pusher, in your own shell, with your own credentials. It never forces a push.
+#
+# Usage: ralph-pusher --repo PATH --plan NAME [--remote NAME] [--interval SECONDS] [--once]
+# Files (in the work directory, not in the repo): push.status, push.err, push.sig, .pusher.lock.
+# Stop it: create PUSHER-STOP in the work directory, or press Ctrl-C.
+# Exit codes: 0 ok, 3 already running, 4 last push failed (with --once).
+set -uo pipefail
+repo="." plan="" remote="origin" interval=45 once=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --repo) repo="$2"; shift 2 ;;
+    --plan) plan="$2"; shift 2 ;;
+    --remote) remote="$2"; shift 2 ;;
+    --interval) interval="$2"; shift 2 ;;
+    --once) once=1; shift ;;
+    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+    *) echo "ralph-pusher: unknown argument '$1'" >&2; exit 2 ;;
+  esac
+done
+[ -n "$plan" ] || { echo "ralph-pusher: --plan is required" >&2; exit 2; }
+REPO="$(git -C "$repo" rev-parse --show-toplevel)" || exit 2
+WORK="${RALPH_WORK:-$HOME/repo-work}/$(basename "$REPO")/$plan"
+mkdir -p "$WORK"
+git -C "$REPO" remote get-url "$remote" >/dev/null 2>&1 || { echo "ralph-pusher: no remote '$remote' in $REPO" >&2; exit 2; }
+exec 9>"$WORK/.pusher.lock"
+flock -n 9 || { echo "ralph-pusher: another pusher runs for this plan." >&2; exit 3; }
+
+push_once() {
+  local refs sig
+  refs="$(git -C "$REPO" for-each-ref --format='%(refname) %(objectname)' "refs/heads/plan/$plan" "refs/heads/step/$plan/")"
+  [ -n "$refs" ] || { echo "nothing to push (no plan branch yet)"; return 0; }
+  sig="$(printf '%s\n' "$refs" | sha256sum | cut -d' ' -f1)"
+  if [ "$sig" = "$(cat "$WORK/push.sig" 2>/dev/null)" ]; then return 0; fi
+  local specs=() ref
+  while read -r ref _; do specs+=("$ref:$ref"); done <<< "$refs"
+  if git -C "$REPO" push --porcelain "$remote" "${specs[@]}" > "$WORK/push.out" 2> "$WORK/push.err"; then
+    printf '%s' "$sig" > "$WORK/push.sig"
+    printf '%s ok %s refs to %s\n' "$(date -u +%FT%TZ)" "${#specs[@]}" "$remote" | tee "$WORK/push.status"
+    return 0
+  fi
+  printf '%s FAILED (see push.err)\n' "$(date -u +%FT%TZ)" | tee "$WORK/push.status" >&2
+  return 4
+}
+
+while :; do
+  [ -f "$WORK/PUSHER-STOP" ] && { echo "ralph-pusher: PUSHER-STOP found."; exit 0; }
+  push_once; rc=$?
+  [ "$once" = 1 ] && exit "$rc"
+  sleep "$interval"
+done

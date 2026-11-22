@@ -23,6 +23,23 @@ Optional `plans/<plan>/loop.yaml` (flat `key: value` lines): `jobs`, `max_attemp
 
 Exit codes: 0 all done, 3 already running, 10 stopped early, 11 blocked, 75 usage limit (with `--on-limit handoff`; run again with another agent).
 
+## Windows (PowerShell 7)
+
+`ralph-looper.ps1` and `ralph-pusher.ps1` have the same behavior and the same work directory layout (`%USERPROFILE%\repo-work`). Parameters are PowerShell style: `-Repo`, `-Plan`, `-Agent`, `-Jobs`, `-Status`, `-Pause`, `-Resume`.
+Step gates run with PowerShell by default. For bash gates, set `gate_shell: bash` in `loop.yaml`.
+**The PowerShell scripts are not tested yet.** The test below covers only the bash scripts. Report problems.
+
+## Off-machine backup
+
+Agents and the driver have no credentials and cannot push. Run the pusher yourself, in a second terminal:
+
+```bash
+ralph-pusher --repo ~/repos/my-repo --plan my-plan --remote origin   # push every 45 s when branches change
+ralph-pusher --repo ~/repos/my-repo --plan my-plan --once            # push now and exit
+```
+
+It pushes only `plan/<plan>` and `step/<plan>/*`. It never forces a push and never pushes `main`. Create `PUSHER-STOP` in the work directory to stop it. The ledger and logs are not pushed (they stay in `~/repo-work`). Remote step branches are not deleted after the merge; delete them yourself.
+
 ## Test
 
 ```bash
@@ -31,7 +48,7 @@ bash tests/run.sh
 
 ## Not built yet
 
-PowerShell driver, local-model agent adapter, a pusher for off-machine backup, a model/cost report from `ledger.jsonl`.
+Local-model agent adapter, a model/cost report from `ledger.jsonl`, a test for the PowerShell scripts.
 
 ## License
 
