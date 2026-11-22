@@ -19,7 +19,6 @@ Read the list. Open only the plans whose "Read me when" line matches your task.
 
 <!-- BEGIN GENERATED INDEX -->
 
-* [ralphify-repositories/plan.md](./ralphify-repositories/plan.md)
-  Read me when: you want to bring the ten approved repositories onto repo-template and run their Docker-verified migrations with Ralph.
+<!-- Nothing to list yet. -->
 
 <!-- END GENERATED INDEX -->

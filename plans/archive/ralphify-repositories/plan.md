@@ -4,6 +4,8 @@ gist: "Read me when: you want to bring the ten approved repositories onto repo-t
 
 # Ralphify the approved repositories
 
+Completed and archived. See the [verification and publication record](./steps/02-verify-rollout.md). The run commands below describe the original active plan and its worktree layout.
+
 ## Approach
 
 `repo-template` supplies the layout, agent entry points, index and context checks, and plan format. `ralph-looper` takes a committed plan from the repository passed to `--repo`. It creates a plan branch, runs each step in its own worktree, reruns its gate, and merges successful steps into that plan branch. Use that same driver for this parent plan and for each child plan. The parent plan prepares a launcher and verifies the results. The launcher provisions and runs child plans as separate host processes under operator control. No driver or prompt changes are needed.

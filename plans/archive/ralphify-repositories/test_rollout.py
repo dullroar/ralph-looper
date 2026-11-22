@@ -20,7 +20,7 @@ sys.dont_write_bytecode = True
 import rollout
 
 
-RUNNER = rollout.HERE.parents[1] / "ralph-looper"
+RUNNER = rollout.HERE.parents[2] / "ralph-looper"
 ALLOWLIST = {"gpx_parser": "master", "metadata_mcp": "main"}
 
 FAKE_AGENT = """\
