@@ -62,6 +62,13 @@ RUNTIME_ENV = (
 )
 CHILD_OVERRIDES = ("AGENT_CMD", "STEP_TIMEOUT_MIN", "GATE_TIMEOUT_MIN", "MAX_USD", "MAX_ATTEMPTS")
 FUSE_REPOS = {"duckdb-fs", "lmdb-fs"}
+# The owner approved one offline test correction after the Docker gate stopped.
+# Keep the original stop and requeue commits in history.
+COMPLIANCE_REPAIR_HISTORY = (
+    "c1111e14bab4addbd5c4f747d709597ce6379d7f",
+    "6dc07712efc662d1521c83f15b1d6cff209a1ad0",
+    "61016ab3f6dc2265c52e9f4de8d32e02e8f77a9a",
+)
 
 
 class RolloutError(RuntimeError):
@@ -499,9 +506,18 @@ def inspect_result(row, repo_name, sha):
             == expected_steps, f"{repo_name}: unexpected set of committed steps")
     history = git_text(repo, "rev-list", "--first-parent", "--reverse", f"{row['seed_sha']}..{sha}")
     merges = history.splitlines()
+    repair = None
+    if repo_name == "compliance_poc" and tuple(merges[1:4]) == COMPLIANCE_REPAIR_HISTORY:
+        repair = merges[3]
+        changed = git(repo, "diff", "--name-only", "--no-renames", "-z", merges[0], repair)
+        require(changed == b"tests/test_openai_cost_estimator.py\0",
+                f"{repo_name}: approved recovery changed unexpected files")
+        merges = [merges[0], *merges[4:]]
     require(len(merges) == len(STEPS), f"{repo_name}: missing or unexpected driver merges")
     base = row["seed_sha"]
     for (step, gate), merge in zip(STEPS.items(), merges):
+        if repair and step == "02-build-and-test":
+            base = repair
         path = f"{PLAN_PATH}/steps/{step}.md"
         actual, body = front_matter(pinned_file(repo, sha, path).decode())
         source = pinned_file(repo, row["seed_sha"], path).decode()
