@@ -39,4 +39,13 @@ git --git-dir="$TMP/remote.git" rev-parse step/p1/99-x >/dev/null || fail "step 
 git --git-dir="$TMP/remote.git" rev-parse main >/dev/null 2>&1 && fail "pusher pushed main"
 $PUSH > "$TMP/push2.out" || fail "second pusher run failed"
 [ -z "$(cat "$TMP/push2.out")" ] || fail "second run should be silent (nothing changed)"
+echo "== 4. remote cleanup: merged step branch deleted, unmerged kept =="
+git checkout -q -b step/p1/98-unmerged plan/p1; echo x > unmerged.txt; git add unmerged.txt; git commit -q -m unmerged; git checkout -q main
+$PUSH > /dev/null || fail "pusher failed (push unmerged branch)"
+git --git-dir="$TMP/remote.git" rev-parse step/p1/98-unmerged >/dev/null || fail "unmerged branch not pushed"
+git branch -q -D step/p1/99-x step/p1/98-unmerged
+$PUSH > "$TMP/push3.out" || fail "pusher failed (cleanup)"
+grep -q 'deleted merged remote branch step/p1/99-x' "$TMP/push3.out" || fail "no delete message"
+git --git-dir="$TMP/remote.git" rev-parse step/p1/99-x >/dev/null 2>&1 && fail "merged remote branch not deleted"
+git --git-dir="$TMP/remote.git" rev-parse step/p1/98-unmerged >/dev/null 2>&1 || fail "UNMERGED remote branch was deleted"
 echo "PASS"
