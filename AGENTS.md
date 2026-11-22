@@ -4,7 +4,9 @@ This repository is `ralph-looper`. It is a tool that runs the steps of a plan wi
 
 Files:
 
-- `ralph-looper`: the driver script (bash).
+- `ralph-looper`: the driver script (bash). `ralph-looper.ps1`: the same driver for PowerShell 7 (Windows).
+- `ralph-pusher` and `ralph-pusher.ps1`: push the plan and step branches to a remote for off-machine backup. The user runs them, with the user's credentials. Agents never run them.
+- Keep the bash and PowerShell versions equal in behavior. Change both in the same commit.
 - `lib/pick_step.py`: reads step files and picks ready steps.
 - `lib/usage.py`: reads the agent output, writes the usage ledger and prints the usage block.
 - `lib/agents.sh`: the command line for each agent. `lib/PROMPT.md`: the prompt for one step.
