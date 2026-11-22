@@ -19,6 +19,7 @@ Read the list. Open only the plans whose "Read me when" line matches your task.
 
 <!-- BEGIN GENERATED INDEX -->
 
-<!-- Nothing to list yet. -->
+* [sharpen-mcp-suite/plan.md](./sharpen-mcp-suite/plan.md)
+  Read me when: you want to run or resume the four bounded MCP tool catalogs from one Ralph parent plan.
 
 <!-- END GENERATED INDEX -->
