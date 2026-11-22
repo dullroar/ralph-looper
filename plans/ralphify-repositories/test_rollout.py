@@ -308,6 +308,31 @@ class EvidenceTest(unittest.TestCase):
         self.assertFalse(rollout.has_contract_link(definition, url))
         self.assertTrue(rollout.has_contract_link(f"Read [repo-template][layout].\n\n{definition}", url))
 
+    def test_reads_commit_after_an_explanation_and_commands_in_a_fence(self):
+        sha = "a" * 40
+        report = f"""
+## Results
+
+- Base commit: PASS. The merge base was
+  `{sha}`.
+- Commands: PASS. The gate ran the following command.
+
+  ```bash
+  python3 scripts/check_context.py && bash scripts/test_docker.sh && git diff --check
+  ```
+
+- Docker build: PASS. Built the test image.
+- Tests: PASS. 649 tests passed.
+- Skips: Eight opt-in checks.
+- FUSE: n/a
+- UTC date: 2026-11-22
+"""
+        self.assertEqual(rollout.verification_notes(report, "compliance_poc")["Base commit"], sha)
+        with self.assertRaisesRegex(rollout.RolloutError, "required results"):
+            rollout.verification_notes(report.replace("scripts/test_docker.sh", "true"), "compliance_poc")
+        with self.assertRaisesRegex(rollout.RolloutError, "required results"):
+            rollout.verification_notes(report.replace(sha, sha + " or " + "b" * 40), "compliance_poc")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

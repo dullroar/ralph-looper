@@ -459,22 +459,25 @@ def verification_notes(body, repo_name):
     content = body.split("\n## Results\n", 1)[1].split("\n## ", 1)[0]
     fields = ("Base commit", "Commands", "Docker build", "Tests", "Skips", "FUSE", "UTC date")
     expected = "|".join(fields)
-    entries = re.findall(rf"^- ({expected}):[ \t]+([^\n]+(?:\n[ \t]+[^\n]+)*)$", content, re.MULTILINE)
+    entries = re.findall(
+        rf"^- ({expected}):[ \t]+([^\n]+(?:\n(?:[ \t]+[^\n]*|[ \t]*(?=\n)))*)$",
+        content,
+        re.MULTILINE,
+    )
     notes = {field: " ".join(part.strip() for part in value.splitlines()) for field, value in entries}
     require(len(entries) == len(fields) and set(notes) == set(fields)
             and all(value.strip() and "PENDING" not in value for value in notes.values()),
             f"{repo_name}: incomplete committed verification notes")
-    base = re.match(r"^(?P<tick>`?)(?P<sha>[0-9a-f]{64}|[0-9a-f]{40})(?P=tick)(?=$|[\s.,])",
-                    notes["Base commit"])
+    base_commits = re.findall(r"\b(?:[0-9a-f]{64}|[0-9a-f]{40})\b", notes["Base commit"])
     def passed(field):
         return re.match(r"^PASS\b[. :–—-]*\s+\S", notes[field])
 
-    require(base
+    require(len(base_commits) == 1
             and "scripts/test_docker.sh" in notes["Commands"]
             and passed("Docker build") and passed("Tests")
             and (passed("FUSE") if repo_name in FUSE_REPOS else notes["FUSE"].rstrip(".") == "n/a"),
             f"{repo_name}: committed verification notes do not show the required results")
-    notes["Base commit"] = base["sha"]
+    notes["Base commit"] = base_commits[0]
     notes["UTC date"] = notes["UTC date"].rstrip(".")
     datetime.date.fromisoformat(notes["UTC date"])
     return notes
