@@ -1,0 +1,11 @@
+repo	base
+compliance_poc	master
+duckdb-fs	main
+ffmpeg_mcp	main
+gpx_parser	master
+lmdb-fs	main
+metadata_driven_gx	main
+metadata_mcp	main
+pandoc_mcp	main
+sample_parse	master
+vips_mcp	main
