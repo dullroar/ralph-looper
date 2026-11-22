@@ -449,22 +449,37 @@ def front_matter(data):
 def verification_notes(body, repo_name):
     if "\n## Results\n" not in body:
         raise RolloutError(f"{repo_name}: missing committed verification results")
-    content = body.split("\n## Results\n", 1)[1]
+    content = body.split("\n## Results\n", 1)[1].split("\n## ", 1)[0]
     fields = ("Base commit", "Commands", "Docker build", "Tests", "Skips", "FUSE", "UTC date")
     expected = "|".join(fields)
-    entries = re.findall(rf"^- ({expected}):[ \t]+([^\n]+)$", content, re.MULTILINE)
-    notes = dict(entries)
+    entries = re.findall(rf"^- ({expected}):[ \t]+([^\n]+(?:\n[ \t]+[^\n]+)*)$", content, re.MULTILINE)
+    notes = {field: " ".join(part.strip() for part in value.splitlines()) for field, value in entries}
     require(len(entries) == len(fields) and set(notes) == set(fields)
             and all(value.strip() and "PENDING" not in value for value in notes.values()),
             f"{repo_name}: incomplete committed verification notes")
-    require(re.fullmatch(r"[0-9a-f]{40,64}", notes["Base commit"])
+    base = re.match(r"^(?P<tick>`?)(?P<sha>[0-9a-f]{64}|[0-9a-f]{40})(?P=tick)(?=$|[\s.,])",
+                    notes["Base commit"])
+    def passed(field):
+        return re.match(r"^PASS\b[. :–—-]*\s+\S", notes[field])
+
+    require(base
             and "scripts/test_docker.sh" in notes["Commands"]
-            and notes["Docker build"].startswith("PASS ")
-            and notes["Tests"].startswith("PASS ")
-            and (notes["FUSE"].startswith("PASS ") if repo_name in FUSE_REPOS else notes["FUSE"] == "n/a"),
+            and passed("Docker build") and passed("Tests")
+            and (passed("FUSE") if repo_name in FUSE_REPOS else notes["FUSE"].rstrip(".") == "n/a"),
             f"{repo_name}: committed verification notes do not show the required results")
+    notes["Base commit"] = base["sha"]
+    notes["UTC date"] = notes["UTC date"].rstrip(".")
     datetime.date.fromisoformat(notes["UTC date"])
     return notes
+
+
+def has_contract_link(contract, url):
+    target = re.escape(url) + r"/?"
+    if re.search(r"\[[^\]\n]+\]\(" + target + r"\)", contract):
+        return True
+    references = re.findall(r"^\[([^\]\n]+)\]:[ \t]+" + target + r"[ \t]*$", contract, re.MULTILINE)
+    return any(re.search(r"\[[^\]\n]+\]\[" + re.escape(label) + r"\]", contract, re.IGNORECASE)
+               for label in references)
 
 
 def inspect_result(row, repo_name, sha):
@@ -476,7 +491,7 @@ def inspect_result(row, repo_name, sha):
             f"{repo_name}: missing required files: {', '.join(sorted(set(REQUIRED_RESULT_FILES) - tracked))}")
     contract = pinned_file(repo, sha, "AGENTS.md").decode()
     for link in LINKS:
-        require(re.search(r"\[[^\]\n]+\]\(" + re.escape(link) + r"/?\)", contract),
+        require(has_contract_link(contract, link),
                 f"{repo_name}: missing AGENTS.md link to {link}")
 
     expected_steps = {f"{PLAN_PATH}/steps/{step}.md" for step in STEPS}

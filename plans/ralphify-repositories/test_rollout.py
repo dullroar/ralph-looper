@@ -278,5 +278,36 @@ class LauncherTest(unittest.TestCase):
             pass
 
 
+class EvidenceTest(unittest.TestCase):
+    def test_accepts_markdown_that_retains_the_required_evidence(self):
+        sha = "a" * 40
+        report = f"""
+## Results
+
+- Base commit: `{sha}` from
+  `git merge-base HEAD plan/ralphify`.
+- Commands: PASS.
+  `bash scripts/test_docker.sh` passed.
+- Docker build: PASS. Built the test image.
+- Tests: PASS — 17 tests passed.
+- Skips: None.
+- FUSE: n/a.
+- UTC date: 2026-11-22.
+"""
+        notes = rollout.verification_notes(report, "metadata_mcp")
+        self.assertEqual(notes["Base commit"], sha)
+        self.assertEqual(notes["UTC date"], "2026-11-22")
+        with self.assertRaisesRegex(rollout.RolloutError, "required results"):
+            rollout.verification_notes(report, "duckdb-fs")
+        with self.assertRaisesRegex(rollout.RolloutError, "required results"):
+            rollout.verification_notes(report.replace("Tests: PASS", "Tests: FAIL"), "metadata_mcp")
+
+    def test_reference_link_requires_a_matching_reference_in_the_contract(self):
+        url = "https://github.com/dullroar/repo-template"
+        definition = f"[layout]: {url}"
+        self.assertFalse(rollout.has_contract_link(definition, url))
+        self.assertTrue(rollout.has_contract_link(f"Read [repo-template][layout].\n\n{definition}", url))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
