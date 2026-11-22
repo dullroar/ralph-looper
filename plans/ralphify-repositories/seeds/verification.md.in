@@ -1,0 +1,11 @@
+Run `git merge-base HEAD plan/ralphify` to identify the integrated base commit. Replace each pending value in the results below. For each passing check, put details after `PASS`. Include the actual Docker commands or image reference and test counts or concrete smoke results. Record `n/a` in the FUSE field for other repos. If a required test fails or skips, record that in resume notes and leave the result pending.
+
+## Results
+
+- Base commit: PENDING
+- Commands: PENDING
+- Docker build: PENDING
+- Tests: PENDING
+- Skips: PENDING
+- FUSE: PENDING
+- UTC date: PENDING

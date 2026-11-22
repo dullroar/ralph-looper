@@ -1,6 +1,6 @@
 ---
 id: 01-prepare-launcher
-status: pending
+status: done
 depends_on: []
 touches:
   - plans/ralphify-repositories/rollout.py
@@ -9,7 +9,7 @@ touches:
   - plans/ralphify-repositories/steps/01-prepare-launcher.md
 lane: none
 gate: python3 plans/ralphify-repositories/test_rollout.py && python3 scripts/check_context.py && git diff --check
-evidence: ""
+evidence: "2026-11-22 UTC. Step gate passed. Six launcher tests passed. Context and whitespace checks passed."
 ---
 
 # Prepare the child plan launcher
@@ -27,3 +27,10 @@ Implement the plan-local operator launcher described in [plan.md](../plan.md). U
 
 - Implement `verify`, using the recorded local state and the allowlist. Read `refs/heads/plan/ralphify` in each target with Git plumbing. Do not call the driver's `--status` here. It can create a branch or worktree. Require the recorded plan SHA to match, descend from the seed, and have precisely the expected completed steps with driver evidence. Check for the required template files, both `AGENTS.md` links, the Docker test script, and committed verification notes. Associate the final Docker gate result and image/test evidence with that child plan SHA. Reject incomplete, stale, or foreign results. Print an aggregate result with repo names and commit IDs.
 - Prove two disposable repos can be seeded and run by the actual driver with a fake agent. Check that the allowed child plans finish, an interrupted rerun resumes, a failed gate remains incomplete, an unrelated repo stays untouched, and parent verification rejects absent or mismatched results. Record the smoke test outcome in this step.
+
+## Results
+
+- Two disposable targets ran through the Bash driver. One stopped with a simulated usage limit and resumed from the same worktree. The completed lane retained its original result. A separate run with a failed gate left that lane incomplete.
+- Verification rejected changed result logs and a changed plan ref. Provisioning rejected dirty and advanced bases, an unknown target, a linked checkout for a different repository, an unrecorded seed branch, and a changed runner input.
+- The ten generated child seeds passed their legacy context preflight and the runner selected step 01 in every snapshot. The known standalone `duckdb-fs` README link was the only accepted preflight exception. Its child context gate still requires a clean result.
+- The launcher bundles the pinned template files into each seed. The operator can see explicit child overrides with `rollout.py run --help`. The fixture tests use fake Docker gate results. The operator rollout will supply the real results.
