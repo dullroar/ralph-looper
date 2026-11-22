@@ -9,7 +9,9 @@ touches:
   - plans/ralphify-repositories/steps/01-prepare-launcher.md
 lane: none
 gate: python3 plans/ralphify-repositories/test_rollout.py && python3 scripts/check_context.py && git diff --check
-evidence: "2026-11-22 UTC. Step gate passed. Six launcher tests passed. Context and whitespace checks passed."
+evidence: gate passed 2026-11-22 (driver-verified)
+claimed_by: codex cli-default
+claimed_at: "2026-11-22T20:11:34Z"
 ---
 
 # Prepare the child plan launcher
