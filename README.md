@@ -38,7 +38,7 @@ ralph-pusher --repo ~/repos/my-repo --plan my-plan --remote origin   # push ever
 ralph-pusher --repo ~/repos/my-repo --plan my-plan --once            # push now and exit
 ```
 
-It pushes only `plan/<plan>` and `step/<plan>/*`. It never forces a push and never pushes `main`. Create `PUSHER-STOP` in the work directory to stop it. The ledger and logs are not pushed (they stay in `~/repo-work`). Remote step branches are not deleted after the merge; delete them yourself.
+It pushes only `plan/<plan>` and `step/<plan>/*`. It never forces a push and never pushes `main`. After a step merges, it deletes the remote step branch. It does this only when the local branch is gone and the branch tip is already inside `plan/<plan>`, so unmerged work is never deleted. Create `PUSHER-STOP` in the work directory to stop it. The ledger and logs are not pushed (they stay in `~/repo-work`).
 
 ## Test
 

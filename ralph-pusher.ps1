@@ -2,6 +2,8 @@
 # while ralph-looper runs, or after it stops. Same behavior as `ralph-pusher` (bash).
 #
 # It pushes only the plan branch (plan/<plan>) and the step branches (step/<plan>/*) to a remote.
+# After a step merges, it deletes the matching remote step branch, but only when the local branch is
+# gone and its tip is already inside plan/<plan>. Unmerged work is never deleted.
 # The agents and the driver have no credentials. YOU run this in your own shell. It never forces a push.
 #
 # Usage: ./ralph-pusher.ps1 -Repo PATH -Plan NAME [-Remote NAME] [-Interval SECONDS] [-Once]
@@ -30,13 +32,30 @@ if ($LASTEXITCODE -ne 0) { Write-Error "ralph-pusher: no remote '$Remote' in $Re
 try { $lock = [System.IO.File]::Open((Join-Path $Work '.pusher.lock'), 'OpenOrCreate', 'ReadWrite', 'None') }
 catch [System.IO.IOException] { Write-Error 'ralph-pusher: another pusher runs for this plan.'; exit 3 }
 
+function Remove-MergedRemoteSteps {
+    git -C $RepoRoot rev-parse -q --verify "refs/heads/plan/$Plan" *> $null
+    if ($LASTEXITCODE -ne 0) { return }
+    foreach ($line in @(git -C $RepoRoot ls-remote --heads $Remote "refs/heads/step/$Plan/*" 2>> (Join-Path $Work 'push.err'))) {
+        if (-not $line) { continue }
+        $sha, $ref = $line -split "\s+", 2
+        git -C $RepoRoot rev-parse -q --verify $ref *> $null
+        if ($LASTEXITCODE -eq 0) { continue }                       # local branch still exists
+        git -C $RepoRoot cat-file -e "$sha^{commit}" *> $null
+        if ($LASTEXITCODE -ne 0) { continue }                       # tip unknown here: keep it
+        git -C $RepoRoot merge-base --is-ancestor $sha "refs/heads/plan/$Plan" *> $null
+        if ($LASTEXITCODE -ne 0) { continue }                       # not merged: keep it
+        git -C $RepoRoot push --porcelain $Remote --delete $ref *>> (Join-Path $Work 'push.out')
+        if ($LASTEXITCODE -eq 0) { Write-Host "$((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')) deleted merged remote branch $($ref -replace '^refs/heads/', '')" }
+    }
+}
+
 function Push-Once {
     $refs = @(git -C $RepoRoot for-each-ref --format='%(refname) %(objectname)' "refs/heads/plan/$Plan" "refs/heads/step/$Plan/")
     if ($refs.Count -eq 0) { Write-Host 'nothing to push (no plan branch yet)'; return 0 }
     $sha = [System.Security.Cryptography.SHA256]::HashData([System.Text.Encoding]::UTF8.GetBytes(($refs -join "`n")))
     $sig = [Convert]::ToHexString($sha)
     $sigFile = Join-Path $Work 'push.sig'
-    if ((Test-Path $sigFile) -and ((Get-Content $sigFile -Raw).Trim() -eq $sig)) { return 0 }
+    if ((Test-Path $sigFile) -and ((Get-Content $sigFile -Raw).Trim() -eq $sig)) { Remove-MergedRemoteSteps; return 0 }
     $specs = $refs | ForEach-Object { $r = ($_ -split ' ')[0]; "${r}:${r}" }
     $out = git -C $RepoRoot push --porcelain $Remote @specs 2> (Join-Path $Work 'push.err')
     $stamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
@@ -45,6 +64,7 @@ function Push-Once {
         Set-Content $sigFile $sig -NoNewline
         $msg = "$stamp ok $($specs.Count) refs to $Remote"
         Set-Content (Join-Path $Work 'push.status') $msg; Write-Host $msg
+        Remove-MergedRemoteSteps
         return 0
     }
     $msg = "$stamp FAILED (see push.err)"
