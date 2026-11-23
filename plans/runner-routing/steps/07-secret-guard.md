@@ -13,9 +13,9 @@ touches:
   - plans/runner-routing/steps/07-secret-guard.md
 lane: none
 gate: python3 tests/test_secret_guard.py && python3 scripts/secret_guard.py --tracked && python3 scripts/secret_guard.py --history && bash scripts/install_hooks.sh --self-test && python3 scripts/build_indexes.py --check && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "2026-11-23: the gate command of this step passed (21 tests ok, --tracked and --history clean, hooks self-test ok, indexes current, check_context ok, diff check clean)."
+claimed_by: claude cli-default
+claimed_at: "2026-11-23T22:26:26Z"
+evidence: gate passed 2026-11-23 (driver-verified)
 ---
 
 # Build a deterministic secret guard for commits, pushes, CI and the driver
