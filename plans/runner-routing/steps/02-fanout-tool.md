@@ -1,6 +1,6 @@
 ---
 id: 02-fanout-tool
-status: pending
+status: done
 depends_on: []
 touches:
   - lib/fanout.py
@@ -11,7 +11,7 @@ lane: none
 gate: python3 tests/test_fanout.py && python3 lib/fanout.py --help && python3 scripts/check_context.py && git diff --check
 claimed_by: ""
 claimed_at: ""
-evidence: ""
+evidence: "gate passed 2026-11-23: python3 tests/test_fanout.py (9 tests OK), fanout.py --help, check_context.py, git diff --check"
 ---
 
 # Combine the two plan-local launchers into one tested fan-out tool
@@ -71,3 +71,5 @@ If you cannot finish, write "Resume notes" below. Keep the status `in_progress`.
 ## Resume notes
 
 (none)
+
+Note for step 05: `docs/fanout.md` is new. Add it to the table in `docs/README.md` (step 05 owns that file).
