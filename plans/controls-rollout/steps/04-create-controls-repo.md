@@ -1,15 +1,15 @@
 ---
 id: 04-create-controls-repo
-status: pending
+status: done
 depends_on: [02-owner-decisions]
 touches:
   - plans/controls-rollout/steps/04-create-controls-repo.md
 lane: none
 agent: operator
 gate: git ls-remote --exit-code https://github.com/dullroar/deterministic-controls HEAD >/dev/null && git -C "$REPOS_ROOT/deterministic-controls" rev-parse --verify -q main >/dev/null && test -f "$REPOS_ROOT/deterministic-controls/plans/for-each-plan/goal.md" && test -z "$(git -C "$REPOS_ROOT/deterministic-controls" status --porcelain)"
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: operator
+claimed_at: "2026-11-23T23:34:31Z"
+evidence: gate passed 2026-11-23 (operator step, driver-verified)
 ---
 
 # Operator: create the library repository from the template
