@@ -1,6 +1,6 @@
 ---
 id: 04-route-report
-status: pending
+status: blocked
 depends_on: [03-step-routing, 07-secret-guard]
 touches:
   - lib/usage.py
