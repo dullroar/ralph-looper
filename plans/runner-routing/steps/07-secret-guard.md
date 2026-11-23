@@ -1,6 +1,6 @@
 ---
 id: 07-secret-guard
-status: pending
+status: done
 depends_on: [01-baseline-records]
 touches:
   - scripts/secret_guard.py
@@ -15,7 +15,7 @@ lane: none
 gate: python3 tests/test_secret_guard.py && python3 scripts/secret_guard.py --tracked && python3 scripts/secret_guard.py --history && bash scripts/install_hooks.sh --self-test && python3 scripts/build_indexes.py --check && python3 scripts/check_context.py && git diff --check
 claimed_by: ""
 claimed_at: ""
-evidence: ""
+evidence: "2026-11-23: the gate command of this step passed (21 tests ok, --tracked and --history clean, hooks self-test ok, indexes current, check_context ok, diff check clean)."
 ---
 
 # Build a deterministic secret guard for commits, pushes, CI and the driver
@@ -67,7 +67,40 @@ If you cannot finish, write "Resume notes" below. Keep the status `in_progress`.
 
 ## Results
 
-(fill in)
+History audit on 2026-11-23 with `secret_guard.py --history --format json --root <repo>`, read-only. No repository was changed. `diffs` is the number of file diffs that the guard read. Unscanned diffs are binary files. The guard checked their names.
+
+| Repository | Findings | Diffs | Unscanned (binary) |
+| --- | --- | --- | --- |
+| `ralph-looper` | 0 (1 inline exception in this step file) | 214 | 0 |
+| `repo-template` | 0 | 25 | 0 |
+| `aprende-a-programar-como-un-bicho-raro` | 0 | 7538 | 108 |
+| `compliance_poc` | 5 | 776 | 1 |
+| `duckdb-fs` | 0 | 129 | 0 |
+| `ffmpeg_mcp` | 0 | 147 | 0 |
+| `gpx_parser` | 0 | 125 | 0 |
+| `lmdb-fs` | 0 | 195 | 0 |
+| `metadata_driven_gx` | 0 | 173 | 0 |
+| `metadata_mcp` | 0 | 177 | 7 |
+| `pandoc_mcp` | 0 | 101 | 0 |
+| `sample_parse` | 0 | 114 | 0 |
+| `vips_mcp` | 0 | 148 | 0 |
+| `learn-programming-the-weird-way` | 0 | 1887 | 85 |
+
+Findings in `compliance_poc`. All five are offline test values, not credentials. The four key-like values end in `SENTINEL-0000`. The fifth is a test marker that ends in `NOT-APPEAR-9876`. No rotation is necessary.
+
+| Commit | Path | Rule | Fingerprint |
+| --- | --- | --- | --- |
+| `0bae2a776d6fde0a4a498a3b9844c57d8f822e89` | `tests/test_openai_live_parallel.py` | `openai-key` | `4511cba94ce4981d30bfedfaafd96ead09bd99ed2f6a7c824461d7e9be44ee39` |
+| `e35e8f056e51ea9fda0130a823a12c19a2245502` | `tests/test_anthropic_live_parallel.py` | `anthropic-key` | `c7dba1a2c164ddae7f29e7520bf2b5ebedf12441c34aca369924615c4a80af22` |
+| `020620a5aec4afe1a0ce7ef5f03ce587e0d651bf` | `tests/test_anthropic_live_accounting.py` | `anthropic-key` | `38b64a76e12ab51a719de02d48eaf84a3d35278e6adf41eb31682f16486145fd` |
+| `020620a5aec4afe1a0ce7ef5f03ce587e0d651bf` | `tests/test_openai_live_parity_accounting.py` | `openai-key` | `e5d34469cb44100a292748427369760106a4c184b1a94165e45bbedffe6d6e7a` |
+| `052d735f5ddfce9cba67e8df1e5c4267bd88bded` | `tests/test_agent_runner.py` | `generic-secret` | `6641c131657c531de49ba551b67d4bed9931cb5c48e9582b8442a5d4ed2fb03b` |
+
+Notes for later steps:
+
+- `compliance_poc` needs five lines in its own `.secret-guard-allow`, one for each fingerprint above, with the reason "offline test sentinel" (or "offline test marker" for the fifth). The planning audit expected one value. There are two sentinel values in four files, and one marker.
+- The first audit run found 22 generic matches in `translation/protected-tokens/tokens.jsonl` of the translation repository. They were language identifiers, for example `"token":"ReadableStreamDefaultController"`. The guard now ignores identifier-like values with at most one digit. The count above is after that change.
+- Hooks are not installed in any clone by this step. The operator runs `bash scripts/install_hooks.sh` in each clone after the merge (see `plan.md`).
 
 ## Resume notes
 
