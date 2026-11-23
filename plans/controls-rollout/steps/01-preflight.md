@@ -1,15 +1,15 @@
 ---
 id: 01-preflight
-status: in_progress
+status: done
 depends_on: []
 touches:
   - plans/controls-rollout/steps/01-preflight.md
 lane: none
 tier: light
 gate: for c in step-agent operator-step script-step local-agent gate-from-plan-branch touches-enforced; do ./ralph-looper --capabilities | grep -qx "$c" || exit 1; done && python3 lib/fanout.py --help >/dev/null && python3 lib/report.py --help >/dev/null && python3 scripts/check_records.py plans/runner-routing/baseline.tsv --min-rows 13 && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: claude cli-default
+claimed_at: "2026-11-23T23:34:28Z"
+evidence: gate passed 2026-11-23 (driver-verified)
 ---
 
 # Check the runner features, the baseline and the drift since it
