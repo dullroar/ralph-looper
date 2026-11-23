@@ -9,6 +9,12 @@ Files:
 - Keep the bash and PowerShell versions equal in behavior. Change both in the same commit.
 - `lib/pick_step.py`: reads step files and picks ready steps.
 - `lib/usage.py`: reads the agent output, writes the usage ledger and prints the usage block.
+- `lib/fanout.py`: runs a wave of child plans in other repositories. The operator runs it. Agents never run `provision` or `run`.
+- `lib/report.py`: summarizes the usage ledger by agent, route and model.
+- `scripts/check_records.py`: checks TSV records (for gates).
+- `scripts/secret_guard.py`: finds secrets and forbidden files in staged blobs, commit ranges, tracked files and history.
+- `scripts/install_hooks.sh`: installs the pre-commit and pre-push hooks of the secret guard. Run it in every clone.
+- `tests/run-pwsh.sh`: tests the PowerShell driver. It runs only where `pwsh` is installed.
 - `lib/agents.sh`: the command line for each agent. `lib/PROMPT.md`: the prompt for one step.
 - `tests/run.sh`: end-to-end test with a fake agent, including `kill -9` and restart. Run it after any change to the driver.
 
@@ -18,7 +24,9 @@ Files:
 2. **Start all work on a branch.** Never commit to `main` directly. This applies in a Git worktree too. A worktree does not replace a branch: create the branch first, or create the worktree with a new branch (`git worktree add -b <branch> <path>`).
 3. **Write documents in Simplified Technical English** (ASD-STE100), or close to it. Use short sentences, one idea in each, active voice, simple words and consistent terms. The readers are technical and worldwide. Many do not read English as a first language. This rule applies to all Markdown and other English text.
 4. **Do not push, publish or force-push** without authorization from the user.
-5. User instructions come first. If sources conflict, use this order: user, this file, the named plan, `docs/`, `memory/`, code and tests, old notes.
+5. Secrets are never tracked, committed or pushed. The guard runs in the pre-commit and pre-push hooks, in the driver before each merge, and in CI. Do not add an exception to make a step pass. An exception needs the owner's review.
+6. The driver checks the gate and `touches` from the plan branch. Do not edit them in a step.
+7. User instructions come first. If sources conflict, use this order: user, this file, the named plan, `docs/`, `memory/`, code and tests, old notes.
 
 ## Directory structure (from repo-template)
 
