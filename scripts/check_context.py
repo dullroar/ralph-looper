@@ -15,13 +15,16 @@ CHECKS = [
     ["check_plan.py"],
     ["check_links.py"],
     ["scan_secrets.py"],
+    ["secret_guard.py", "--tracked"],
 ]
 
 
 def main(argv: list[str]) -> int:
     failed = []
     for script, *flags in CHECKS:
-        code = subprocess.run([sys.executable, str(HERE / script), *flags, *argv]).returncode
+        # secret_guard.py takes the root as an option, not as a positional argument.
+        extra = ["--root", *argv] if script == "secret_guard.py" and argv else argv
+        code = subprocess.run([sys.executable, str(HERE / script), *flags, *extra]).returncode
         print(f"{'ok  ' if code == 0 else 'FAIL'} {script}")
         if code:
             failed.append(script)
