@@ -28,3 +28,4 @@ A seed step renders one child spec into `seeds/<wave>/` (or `seeds/<wave>/<repo>
 - Never push, publish, change a remote or a GitHub setting. Never run `ralph-pusher`.
 - Never put secrets in a CI job that runs pull-request code. Use `permissions: contents: read`. Pin actions to full commit SHAs.
 - Keep runtime output outside the repository.
+- **Secrets are never tracked, committed or pushed.** The first adoption commit in every child adds `scripts/secret_guard.py`, `scripts/install_hooks.sh` and a blocking CI job (`--tracked`, and `--range` on pull requests). The secret guard is required at once, not advisory. The child's last step runs `secret_guard.py --history` and records the count. Synthetic secrets in tests are built at run time. An exception needs a reason and a fingerprint, and the review step lists each new exception for the owner. After the operator merges a child, the operator runs `bash scripts/install_hooks.sh` in that clone.

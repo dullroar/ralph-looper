@@ -1,7 +1,7 @@
 ---
 id: 05-docs
 status: pending
-depends_on: [01-baseline-records, 02-fanout-tool, 04-route-report]
+depends_on: [01-baseline-records, 02-fanout-tool, 04-route-report, 07-secret-guard]
 touches:
   - README.md
   - AGENTS.md
@@ -26,8 +26,8 @@ evidence: ""
   - `operator` steps hold approvals, publication, settings changes and work for named humans. The gate checks the result. Agents never get bypass rights.
   - The merge decision belongs to CI and the protected branch, not to the driver.
 - `docs/README.md`: link `routing.md` and `fanout.md`.
-- `README.md`: document `agent`, `fallback`, `run`, operator steps, exit code 12, `--capabilities`, `lib/fanout.py`, `lib/report.py` and the local adapter. Remove the built items from "Not built yet". Keep the PowerShell warning unless step 03 ran the PowerShell test.
-- `AGENTS.md`: add `lib/fanout.py`, `lib/report.py`, `scripts/check_records.py` and `tests/run-pwsh.sh` to the file list. Add a rule: "The driver checks the gate and `touches` from the plan branch. Do not edit them in a step."
+- `README.md`: add a "Secrets" section (the guard, its modes, the hooks, the exception format, and `bash scripts/install_hooks.sh` for every clone). Document `agent`, `fallback`, `run`, operator steps, exit code 12, `--capabilities`, `lib/fanout.py`, `lib/report.py` and the local adapter. Remove the built items from "Not built yet". Keep the PowerShell warning unless step 03 ran the PowerShell test.
+- `AGENTS.md`: add `lib/fanout.py`, `lib/report.py`, `scripts/check_records.py`, `scripts/secret_guard.py`, `scripts/install_hooks.sh` and `tests/run-pwsh.sh` to the file list. Add the rule: "Secrets are never tracked, committed or pushed. The guard runs in the pre-commit and pre-push hooks, in the driver before each merge, and in CI. Do not add an exception to make a step pass. An exception needs the owner's review." Add a rule: "The driver checks the gate and `touches` from the plan branch. Do not edit them in a step."
 
 ## Do not change
 

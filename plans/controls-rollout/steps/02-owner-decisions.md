@@ -6,7 +6,7 @@ touches:
   - plans/controls-rollout/steps/02-owner-decisions.md
 lane: none
 agent: operator
-gate: python3 scripts/check_records.py plans/controls-rollout/decisions.tsv --min-rows 14 --columns id,question,default,approved --require approved=yes
+gate: python3 scripts/check_records.py plans/controls-rollout/decisions.tsv --min-rows 15 --columns id,question,default,approved --require approved=yes
 claimed_by: ""
 claimed_at: ""
 evidence: ""

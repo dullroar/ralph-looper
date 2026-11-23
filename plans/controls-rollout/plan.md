@@ -195,6 +195,7 @@ Back up the plan branch with `ralph-pusher` if you want. Merge `plan/controls-ro
 
 - **A seed is written before the facts are known.** Seeds are written one wave at a time, after the previous review. The lessons files carry the facts forward.
 - **A shared release breaks many repositories.** Each repository pins an exact commit. Upgrades are reviewable pull requests. The pilot runs before the fleet. Every receipt records a rollback.
+- **A secret is committed or pushed.** `runner-routing` builds a deterministic secret guard. Every child adds it in its first adoption commit as a required (not advisory) CI job and as pre-commit and pre-push hooks. The driver also runs it before each merge. A missed secret cannot be undone by a later fix, so this check skips the advisory phase.
 - **The producing agent weakens a control.** The runner rejects edits to the gate and to files outside `touches`. CI runs the pinned controls. Step 33 adds required checks and review of policy files, and tests bypass attempts.
 - **The platform cannot enforce a rule.** The translation repository is private. Branch protection on a private repository needs a paid GitHub plan. Step 33 records `documented-gap` with the reason. It does not claim enforcement that does not exist.
 - **The translation loop is paused at a checkpoint.** `loop/STOP` stays in place. The adoption does not resume the old loop and does not change translated content, PO files or locked code. Jim decides when `v4-es-1` starts.

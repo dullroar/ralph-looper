@@ -16,13 +16,14 @@ Use this prompt for each loop iteration. It has no chat history, so keep it comp
 
 ## Goal
 
-Make `ralph-looper` the tool that the [controls rollout](../controls-rollout/plan.md) needs. When this plan is done, one plan can mix executors step by step: a coding agent, a local model, a deterministic script, or an operator action. The driver itself guarantees that an agent cannot change its own gate or work outside `touches`. One tested fan-out tool replaces the two plan-local launchers of 2026-11-22. A route report shows what each executor cost and how often its first attempt passed.
+Make `ralph-looper` the tool that the [controls rollout](../controls-rollout/plan.md) needs. When this plan is done, one plan can mix executors step by step: a coding agent, a local model, a deterministic script, or an operator action. The driver itself guarantees that an agent cannot change its own gate or work outside `touches`. One tested fan-out tool replaces the two plan-local launchers of 2026-11-22. A route report shows what each executor cost and how often its first attempt passed. A deterministic secret guard makes sure that no secret is tracked, committed or pushed, in any repository.
 
 This plan is the first increment. It uses the current driver. Every later plan runs on the driver that this plan produces.
 
 ## Done when
 
-- `bash tests/run.sh`, `python3 tests/test_fanout.py`, `python3 tests/test_report.py` and `python3 tests/test_check_records.py` pass.
+- `bash tests/run.sh`, `python3 tests/test_fanout.py`, `python3 tests/test_report.py`, `python3 tests/test_check_records.py` and `python3 tests/test_secret_guard.py` pass.
+- `scripts/secret_guard.py` finds tokens, passwords, private keys and forbidden files in commits, pushes, CI and the driver before each merge. `scripts/install_hooks.sh` installs the hooks. The history audit of all repositories is recorded.
 - `./ralph-looper --capabilities` prints `step-agent`, `operator-step`, `script-step`, `local-agent`, `gate-from-plan-branch` and `touches-enforced`, one for each line.
 - `python3 lib/fanout.py --help` lists `ready`, `provision`, `run`, `status`, `verify` and `published`.
 - `python3 lib/report.py` summarizes a ledger by agent, route and model.
