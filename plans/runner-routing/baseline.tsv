@@ -1,0 +1,15 @@
+# Baseline of 13 repositories, recorded 2026-11-23 UTC by step 01-baseline-records. Notes are in baseline.md.
+repo	base	commit	context_check	test_command	test_result	ci_workflows	seconds
+ralph-looper	main	c8b7b165ac1385707421fd0de80b543c08673bec	pass	bash tests/run.sh	pass	context.yml	0.12
+repo-template	main	126277f5b34027bc3766b4ae0804746f90dce959	pass	none	not-run	context.yml	0.10
+aprende-a-programar-como-un-bicho-raro	loop/es-v4	af79d843a4cd9aeb591ee792eae418d56141a4c5	absent	python3 -I tools/verify.py --fast	fail	pdf-release-gate.yml,sandbox-gate.yml	0
+compliance_poc	master	3e103af249ab105ce3429d9d8bb2ac6c958c1091	pass	docker build and docker run (Dockerfile test gate)	not-run	claude-code-review.yml,claude.yml,context.yml	0.15
+duckdb-fs	main	124a71d6966227e2314ce47a04a2e2d01aa91d10	pass	docker build and docker run (Dockerfile test gate)	not-run	context.yml	0.11
+ffmpeg_mcp	main	ea397753a6e023f13730af9570d62d616b0a2f25	pass	docker build and docker run (Dockerfile test gate)	not-run	context.yml	0.10
+gpx_parser	master	14899eba71f53d460d6fe7ec7f420bcdcd43d497	pass	docker build and docker run (Dockerfile test gate)	not-run	context.yml	0.10
+lmdb-fs	main	d2d34150ba3cf7844f2af801d9159ce5480a0823	pass	docker build and docker run (Dockerfile test gate)	not-run	context.yml	0.11
+metadata_driven_gx	main	c1b76ee38f14ec279fc8aeba3282c38eb335f490	pass	docker build and docker run (Dockerfile test gate)	not-run	context.yml	0.11
+metadata_mcp	main	5faab7c9d3bda2a867c5ca188b068ffd59d4585e	pass	docker build and docker run (Dockerfile test gate)	not-run	context.yml	0.11
+pandoc_mcp	main	1873896b9cbd4b07a113b7b07d6363cb5e458a78	pass	docker build and docker run (Dockerfile test gate)	not-run	context.yml	0.10
+sample_parse	master	e3f043db056c74ff3e4b43aefa87dc80e7313580	pass	docker build and docker run (Dockerfile test gate)	not-run	context.yml	0.10
+vips_mcp	main	502685abb65b8ad23a0142816eedcd8f4fd121b5	pass	docker build and docker run (Dockerfile test gate)	not-run	context.yml	0.11

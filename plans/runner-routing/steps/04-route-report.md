@@ -1,6 +1,6 @@
 ---
 id: 04-route-report
-status: pending
+status: done
 depends_on: [03-step-routing, 07-secret-guard]
 touches:
   - lib/usage.py
@@ -12,9 +12,9 @@ touches:
   - plans/runner-routing/steps/04-route-report.md
 lane: none
 gate: python3 tests/test_report.py && bash tests/run.sh && python3 lib/report.py --help && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: claude cli-default
+claimed_at: "2026-11-23T22:31:25Z"
+evidence: gate passed 2026-11-23 (driver-verified)
 ---
 
 # Record the route in the ledger and report cost and first-pass rate by route
@@ -40,4 +40,4 @@ If you cannot finish, write "Resume notes" below. Keep the status `in_progress`.
 
 ## Resume notes
 
-(none)
+(none) Step done. PowerShell driver not executed here (pwsh not installed).

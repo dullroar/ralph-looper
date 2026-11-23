@@ -5,11 +5,17 @@
 # Usage: ralph-looper --repo PATH --plan NAME [--agent claude|codex|copilot|local]
 #                     [--jobs N] [--on-limit wait|handoff] [--max-iterations N]
 #        ralph-looper --repo PATH --plan NAME --status | --pause | --resume
+#        ralph-looper --capabilities   (print the supported features, one a line)
+#
+# A step can name its executor in front matter: `agent:` (claude, codex, copilot, local, script,
+# operator), `fallback:` and `run:` (for script steps). See docs/routing.md. The driver reads
+# gate, touches, agent, fallback and run from the plan branch, and rejects changes outside touches.
 #
 # State: plan and step files are in Git (branch plan/<plan>). Everything else (log, usage ledger,
 # locks, worktrees) is in ${RALPH_WORK:-$HOME/repo-work}/<repo>/<plan>/ . Never inside the repo.
 # You can kill this script at any time. Run it again, with any agent, to continue.
-# Exit codes: 0 all steps done, 3 already running, 10 stopped early, 11 blocked, 75 usage limit (handoff).
+# Exit codes: 0 all steps done, 3 already running, 10 stopped early, 11 blocked,
+#             12 waiting for operator, 75 usage limit (handoff).
 set -uo pipefail
 
 HERE="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
@@ -27,7 +33,8 @@ while [ $# -gt 0 ]; do
     --on-limit) on_limit="$2"; shift 2 ;;
     --max-iterations) max_iter="$2"; shift 2 ;;
     --status|--pause|--resume) mode="${1#--}"; shift ;;
-    -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
+    --capabilities) printf '%s\n' step-agent operator-step script-step local-agent gate-from-plan-branch touches-enforced; exit 0 ;;
+    -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
     *) echo "ralph-looper: unknown argument '$1'" >&2; exit 2 ;;
   esac
 done
@@ -37,7 +44,7 @@ REPO_NAME="$(basename "$REPO")"
 WORK="${RALPH_WORK:-$HOME/repo-work}/$REPO_NAME/$plan"
 WT="$WORK/worktrees"; PWT="$WT/_plan"; BRANCH="plan/$plan"
 PICK="python3 -I $HERE/lib/pick_step.py"
-mkdir -p "$WORK/logs" "$WORK/results" "$WORK/attempts" "$WT"
+mkdir -p "$WORK/logs" "$WORK/results" "$WORK/attempts" "$WORK/base" "$WORK/spec" "$WT"
 LEDGER="$WORK/ledger.jsonl"
 
 case "$mode" in
@@ -56,6 +63,7 @@ PLAN_DIR="$PWT/plans/$plan"
 
 if [ "$mode" = status ]; then
   $PICK summary "$PLAN_DIR"; echo "work dir: $WORK"
+  while IFS= read -r w; do [ -n "$w" ] && echo "waiting for operator: $w (see plans/$plan/steps/$w.md)"; done < <($PICK waiting "$PLAN_DIR")
   [ -f "$WORK/PAUSE" ] && echo "PAUSED"
   [ -f "$LEDGER" ] && tail -n 3 "$LEDGER" | cut -c1-300
   exit 0
@@ -81,8 +89,8 @@ exec > >(tee -a "$WORK/driver.out" 9>&-) 2>&1
 
 unset GH_TOKEN GITHUB_TOKEN GITLAB_TOKEN
 export GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=/bin/false
-DEFAULT_CMD="$(agent_cmd "$agent")" || exit 2
-AGENT_CMD="${AGENT_CMD:-$DEFAULT_CMD}"
+case "$agent" in claude|codex|copilot|local) ;; *) echo "ralph-looper: unknown --agent '$agent'" >&2; exit 2 ;; esac
+AGENT_CMD_OVERRIDE="${AGENT_CMD:-}"; unset AGENT_CMD
 
 say() { printf 'ralph-looper: %s\n' "$*"; }
 spent_usd() { python3 -I -c '
@@ -96,67 +104,210 @@ print(f"{t:.4f}")' "$LEDGER"; }
 
 step_file_in() { printf '%s/plans/%s/steps/%s.md' "$1" "$plan" "$2"; }
 
+step_rel() { printf 'plans/%s/steps/%s.md' "$plan" "$1"; }
+
+# ---- executors: overrides first (AGENT_CMD_<NAME>, then AGENT_CMD for the --agent executor) ----
+override_for() {
+  local up ov; up="$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]' | tr -c 'A-Z0-9\n' '_')"; ov="AGENT_CMD_$up"
+  if [ -n "${!ov:-}" ]; then printf '%s' "${!ov}"; return 0; fi
+  if [ "$1" = "$agent" ] && [ -n "$AGENT_CMD_OVERRIDE" ]; then printf '%s' "$AGENT_CMD_OVERRIDE"; return 0; fi
+  return 1
+}
+can_run() { agent_known "$1" && { override_for "$1" >/dev/null || agent_available "$1"; }; }
+cmd_for() { override_for "$1" || agent_cmd "$1"; }
+
+ledger_script() {  # ledger_script STEP RC SECONDS TIER ATTEMPT : a ledger line for a script step (no model)
+  python3 -I - "$LEDGER" "$@" <<'PY'
+import json, sys, time
+ledger, step, rc, secs, tier, attempt = sys.argv[1:7]
+rec = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "step": step, "agent": "script",
+       "route": "script", "attempt": int(attempt), "gate": "none",
+       "exit_code": int(rc), "seconds": int(secs), "tier": tier, "model_requested": "", "effort_requested": "",
+       "cost_usd": 0.0, "cost_est_usd": 0.0, "ai_credits": 0, "tok_fresh_in": 0, "tok_cache_read": 0,
+       "tok_cache_write": 0, "tok_out": 0, "tok_reasoning": 0, "api_calls": 0, "model_reported": "",
+       "models_all": [], "model_mismatch": False, "usage_limited": False}
+with open(ledger, "a", encoding="utf-8") as f:
+    f.write(json.dumps(rec) + "\n")
+PY
+}
+
+merge_step() {  # merge_step SID BRANCH -> exit 0 if merged into the plan branch
+  if ( flock 8; git -C "$PWT" merge --no-ff -q -m "plan($plan): merge $1" "$2" ) 8>"$WORK/merge.lock" 2>>"$WORK/logs/merge.err"; then
+    return 0
+  fi
+  git -C "$PWT" merge --abort 2>/dev/null
+  return 1
+}
+
+drop_worktree() {  # drop_worktree SID : remove the step worktree, its branch and its base record
+  git -C "$REPO" worktree remove --force "$WT/$1" 2>/dev/null
+  git -C "$REPO" branch -q -D "step/$plan/$1" 2>/dev/null
+  rm -f "$WORK/base/$1"
+}
+
+record_gate() {  # record_gate pass|fail : a short ledger line for the gate result (uses the locals of run_step)
+  python3 -I "$HERE/lib/usage.py" --record-gate "$1" --ledger "$LEDGER" --step "$sid" --route "$exe" \
+    --attempt "$((attempts+1))" > /dev/null 2>&1 || true
+}
+
+# attempt_failed MESSAGE : count a failed attempt; block the step after MAX_ATTEMPTS.
+# Uses the locals of run_step (sid, attempts, buf, rel).
+attempt_failed() {
+  echo $((attempts+1)) > "$WORK/attempts/$sid"; echo fail > "$WORK/results/$sid"
+  buf+=$'\n'"result: $1"
+  if [ $((attempts+1)) -ge "$MAX_ATTEMPTS" ]; then
+    $PICK set "$PWT/$rel" status blocked
+    ( flock 8; git -C "$PWT" add -- "$rel" && git -C "$PWT" commit -q -m "plan($plan): $sid blocked after $MAX_ATTEMPTS attempts" ) 8>"$WORK/merge.lock"
+    buf+=$'\n'"result: $sid marked blocked"
+  fi
+}
+
+# ---- operator step: no agent. Run the gate in a fresh worktree. A failed gate is not an attempt. ----
+run_operator() {
+  local sid="$1" swt="$WT/$1" br="step/$plan/$1" rel gate base
+  rel="$(step_rel "$sid")"
+  [ -d "$swt" ] && drop_worktree "$sid"
+  base="$(git -C "$REPO" rev-parse "$BRANCH")"
+  git -C "$REPO" show "$base:$rel" > "$WORK/spec/$sid.md" 2>/dev/null || { echo fail > "$WORK/results/$sid"; echo "result: $sid has no step file on $BRANCH"; return; }
+  gate="$($PICK field "$WORK/spec/$sid.md" gate)"
+  git -C "$REPO" worktree add -q -B "$br" "$swt" "$base" || { echo fail > "$WORK/results/$sid"; return; }
+  echo "$base" > "$WORK/base/$sid"
+  echo "checking operator step $sid"
+  if [ -n "$gate" ] && ( cd "$swt" && timeout "${GATE_TIMEOUT_MIN}m" bash -c "$gate" ) > "$WORK/logs/gate-$sid.out" 2>&1 < /dev/null; then
+    $PICK set "$swt/$rel" status done
+    $PICK set "$swt/$rel" claimed_by operator
+    $PICK set "$swt/$rel" claimed_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    $PICK set "$swt/$rel" evidence "gate passed $(date -u +%Y-%m-%d) (operator step, driver-verified)"
+    git -C "$swt" add -- "$rel" && git -C "$swt" commit -q -m "plan($plan): $sid done (operator)"
+    if merge_step "$sid" "$br"; then
+      drop_worktree "$sid"; echo done > "$WORK/results/$sid"
+      echo "result: $sid done (operator gate passed, merged into $BRANCH)"
+    else
+      drop_worktree "$sid"; echo wait > "$WORK/results/$sid"
+      echo "result: $sid MERGE CONFLICT (see logs/merge.err)"
+    fi
+  else
+    drop_worktree "$sid"; echo wait > "$WORK/results/$sid"
+    echo "waiting for operator: $sid (see plans/$plan/steps/$sid.md)"
+  fi
+}
+
 # ---- run one step (runs in a background subshell; prints its output in one piece) ----
 run_step() {
-  local sid="$1" swt="$WT/$1" br="step/$plan/$1" tier model effort attempts out rc start secs head_before prompt buf gate
+  local sid="$1" swt="$WT/$1" br="step/$plan/$1" rel spec base tier model effort attempts out rc start secs
+  local head_before prompt buf gate fm_agent fallback exe cmd runcmd ublock changed allowed_txt scope_rc
+  rel="$(step_rel "$sid")"; spec="$WORK/spec/$sid.md"
+  attempts="$(cat "$WORK/attempts/$sid" 2>/dev/null || echo 0)"
+  # The driver-owned keys come from the plan commit from which the step worktree started.
+  if [ -d "$swt" ]; then
+    base="$(cat "$WORK/base/$sid" 2>/dev/null)"
+    [ -n "$base" ] || base="$(git -C "$REPO" merge-base "$br" "$BRANCH" 2>/dev/null)"
+  else
+    base="$(git -C "$REPO" rev-parse "$BRANCH")"
+  fi
+  if [ -z "$base" ] || ! git -C "$REPO" show "$base:$rel" > "$spec" 2>/dev/null; then
+    echo fail > "$WORK/results/$sid"; echo "result: $sid has no step file at the plan commit ${base:-?}"; return
+  fi
+  fm_agent="$($PICK field "$spec" agent)"; fallback="$($PICK field "$spec" fallback)"
+  exe="${fm_agent:-$agent}"
+  if [ -n "$fallback" ] && { [ "$attempts" -ge 1 ] || ! can_run "$exe"; }; then exe="$fallback"; fi
+  if ! can_run "$exe"; then
+    echo unavailable > "$WORK/results/$sid"; echo "waiting: agent $exe not available (step $sid not started)"; return
+  fi
+  if [ "$exe" = operator ]; then run_operator "$sid"; return; fi
+
   if [ ! -d "$swt" ]; then
-    git -C "$REPO" worktree add -q -B "$br" "$swt" "$BRANCH" || { echo "fail" > "$WORK/results/$sid"; return; }
+    git -C "$REPO" worktree add -q -B "$br" "$swt" "$base" || { echo fail > "$WORK/results/$sid"; return; }
+    echo "$base" > "$WORK/base/$sid"
     buf="starting step $sid (new worktree)"
   else
     buf="resuming step $sid (worktree exists: previous run stopped)"
   fi
-  local sfile; sfile="$(step_file_in "$swt" "$sid")"
-  tier="$($PICK field "$sfile" tier)"; tier="${tier:-standard}"
-  [ "$(cat "$WORK/attempts/$sid" 2>/dev/null || echo 0)" -ge 1 ] && tier=standard
-  model="$(cfg "${agent}_model_${tier}" "")"; effort="$(cfg "${agent}_effort_${tier}" "")"
+  tier="$($PICK field "$spec" tier)"; tier="${tier:-standard}"
+  [ "$attempts" -ge 1 ] && tier=standard
+  model="" effort=""
+  if [ "$exe" != script ]; then model="$(cfg "${exe}_model_${tier}" "")"; effort="$(cfg "${exe}_effort_${tier}" "")"; fi
   export RALPH_MODEL="$model" RALPH_EFFORT="$effort" RALPH_TIER="$tier" RALPH_STEP="$sid" RALPH_PLAN="$plan"
-  export RALPH_EFFORT_CFG=""
-  [ "$agent" = codex ] && [ -n "$effort" ] && RALPH_EFFORT_CFG="model_reasoning_effort=\"$effort\""
-  attempts="$(cat "$WORK/attempts/$sid" 2>/dev/null || echo 0)"
-  buf+=$'\n'"step=$sid agent=$agent tier=$tier model=${model:-cli-default} effort=${effort:-default} attempts=$attempts"
+  export RALPH_STEP_AGENT="$exe" RALPH_EFFORT_CFG=""
+  [ "$exe" = codex ] && [ -n "$effort" ] && RALPH_EFFORT_CFG="model_reasoning_effort=\"$effort\""
+  buf+=$'\n'"step=$sid agent=$exe tier=$tier model=${model:-cli-default} effort=${effort:-default} attempts=$attempts"
 
-  prompt="$WORK/logs/prompt-$sid.md"
-  sed -e "s/{{PLAN}}/$plan/g" -e "s/{{STEP}}/$sid/g" "$HERE/lib/PROMPT.md" > "$prompt"
   out="$WORK/logs/$sid-$(date +%Y%m%dT%H%M%S).json"
   head_before="$(git -C "$swt" rev-parse HEAD)"
   start=$(date +%s)
-  ( cd "$swt" && timeout "${STEP_TIMEOUT_MIN}m" bash -c "$AGENT_CMD" < "$prompt" > "$out" 2> "$out.err" )
-  rc=$?
-  secs=$(( $(date +%s) - start ))
-  local ublock
-  ublock="$(python3 -I "$HERE/lib/usage.py" --agent "$agent" --out "$out" --ledger "$LEDGER" --rc "$rc" \
-      --seconds "$secs" --step "$sid" --tier "$tier" --model "$model" --effort "$effort" \
-      --head-before "$head_before" --cwd "$swt")"
-  buf+=$'\n'"$ublock"
-  if grep -q '^outcome: limit' <<< "$ublock"; then
-    echo limit > "$WORK/results/$sid"; printf '%s\n' "$buf"; return
+  if [ "$exe" = script ]; then
+    # ---- script step: a deterministic command. No model call. ----
+    runcmd="$($PICK field "$spec" run)"
+    if [ -n "$runcmd" ]; then
+      ( cd "$swt" && timeout "${STEP_TIMEOUT_MIN}m" bash -c "$runcmd" ) < /dev/null > "$out" 2> "$out.err"
+      rc=$?
+    else
+      echo "script step has no run: command" > "$out.err"; rc=2
+    fi
+    secs=$(( $(date +%s) - start ))
+    ledger_script "$sid" "$rc" "$secs" "$tier" "$((attempts+1))"
+    buf+=$'\n'"--- usage: step=$sid agent=script ---"$'\n'"time: ${secs}s  exit_code: $rc"$'\n'"cost: usd=0 (no model)"
+  else
+    prompt="$WORK/logs/prompt-$sid.md"
+    sed -e "s/{{PLAN}}/$plan/g" -e "s/{{STEP}}/$sid/g" "$HERE/lib/PROMPT.md" > "$prompt"
+    cmd="$(cmd_for "$exe")" || { echo fail > "$WORK/results/$sid"; printf '%s\n' "$buf"; return; }
+    ( cd "$swt" && timeout "${STEP_TIMEOUT_MIN}m" bash -c "$cmd" ) < "$prompt" > "$out" 2> "$out.err"
+    rc=$?
+    secs=$(( $(date +%s) - start ))
+    ublock="$(python3 -I "$HERE/lib/usage.py" --agent "$exe" --out "$out" --ledger "$LEDGER" --rc "$rc" \
+        --seconds "$secs" --step "$sid" --tier "$tier" --model "$model" --effort "$effort" --route "$exe" --attempt "$((attempts+1))" \
+        --head-before "$head_before" --cwd "$swt")"
+    buf+=$'\n'"$ublock"
+    if grep -q '^outcome: limit' <<< "$ublock"; then
+      echo limit > "$WORK/results/$sid"; printf '%s\n' "$buf"; return
+    fi
   fi
 
-  # ---- verify: the driver runs the gate itself. It does not trust the agent's word. ----
-  gate="$($PICK field "$sfile" gate)"
-  if [ -n "$gate" ] && ( cd "$swt" && timeout "${GATE_TIMEOUT_MIN}m" bash -c "$gate" ) > "$WORK/logs/gate-$sid.out" 2>&1; then
-    $PICK set "$sfile" status done
-    $PICK set "$sfile" claimed_by "$agent ${model:-cli-default}"
-    $PICK set "$sfile" claimed_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    $PICK set "$sfile" evidence "gate passed $(date -u +%Y-%m-%d) (driver-verified)"
-    git -C "$swt" add -A && git -C "$swt" commit -q -m "plan($plan): $sid done" || true
-    if ( flock 8; git -C "$PWT" merge --no-ff -q -m "plan($plan): merge $sid" "$br" ) 8>"$WORK/merge.lock" 2>>"$WORK/logs/merge.err"; then
-      git -C "$REPO" worktree remove --force "$swt"; git -C "$REPO" branch -q -D "$br"
-      rm -f "$WORK/attempts/$sid"; echo done > "$WORK/results/$sid"
-      buf+=$'\n'"result: $sid done (gate passed, merged into $BRANCH)"
-    else
-      git -C "$PWT" merge --abort 2>/dev/null
-      echo $((attempts+1)) > "$WORK/attempts/$sid"; echo fail > "$WORK/results/$sid"
-      buf+=$'\n'"result: $sid MERGE CONFLICT (see logs/merge.err); worktree kept"
-    fi
+  # ---- verify: the driver checks the scope and runs the gate itself. It does not trust the agent. ----
+  if ! changed="$($PICK same "$spec" "$swt/$rel")"; then
+    attempt_failed "$sid changed its own gate or scope (keys: ${changed//$'\n'/, })"
+    printf '%s\n' "$buf"; return
+  fi
+  gate="$($PICK field "$spec" gate)"
+  if [ -z "$gate" ] || ! ( cd "$swt" && timeout "${GATE_TIMEOUT_MIN}m" bash -c "$gate" ) < /dev/null > "$WORK/logs/gate-$sid.out" 2>&1; then
+    record_gate fail
+    attempt_failed "$sid gate FAILED (rc=$rc, attempt $((attempts+1))/$MAX_ATTEMPTS; see logs/gate-$sid.out)"
+    printf '%s\n' "$buf"; return
+  fi
+  record_gate pass
+  allowed_txt="$($PICK scope "$swt" "$base" "$spec" "$rel" 2> "$WORK/logs/scope-$sid.out")"; scope_rc=$?
+  if [ "$scope_rc" != 0 ]; then
+    attempt_failed "$sid changed files outside touches: $(sed 's/^outside touches: //' "$WORK/logs/scope-$sid.out" | paste -sd ' ' -)"
+    printf '%s\n' "$buf"; return
+  fi
+  local -a allowed=()
+  [ -n "$allowed_txt" ] && mapfile -t allowed <<< "$allowed_txt"
+  $PICK set "$swt/$rel" status done
+  $PICK set "$swt/$rel" claimed_by "$exe ${model:-cli-default}"
+  $PICK set "$swt/$rel" claimed_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  $PICK set "$swt/$rel" evidence "gate passed $(date -u +%Y-%m-%d) (driver-verified)"
+  GIT_LITERAL_PATHSPECS=1 git -C "$swt" add -A -- "$rel" "${allowed[@]}"
+  # Secret guard: the commits the agent made and the staged files. A finding fails the attempt. Nothing is merged.
+  local guard guard_out="$WORK/logs/secret-guard-$sid.out"
+  guard="$HERE/scripts/secret_guard.py"
+  # Use the guard of the target repository at the plan commit (not the agent's copy), else the runner copy.
+  if git -C "$REPO" show "$base:scripts/secret_guard.py" > "$WORK/spec/guard-$sid.py" 2>/dev/null; then
+    guard="$WORK/spec/guard-$sid.py"
+  fi
+  export SECRET_GUARD="$HERE/scripts/secret_guard.py"
+  if ! { python3 -I "$guard" --root "$swt" --staged && python3 -I "$guard" --root "$swt" --range "$base..HEAD"; } > "$guard_out" 2>&1; then
+    git -C "$swt" reset -q --hard "$base"; git -C "$swt" clean -qfd
+    attempt_failed "$sid secret guard FAILED (see logs/secret-guard-$sid.out)"
+    printf '%s\n' "$buf"; return
+  fi
+  git -C "$swt" commit -q -m "plan($plan): $sid done" || true
+  if merge_step "$sid" "$br"; then
+    drop_worktree "$sid"
+    rm -f "$WORK/attempts/$sid"; echo done > "$WORK/results/$sid"
+    buf+=$'\n'"result: $sid done (gate passed, merged into $BRANCH)"
   else
     echo $((attempts+1)) > "$WORK/attempts/$sid"; echo fail > "$WORK/results/$sid"
-    buf+=$'\n'"result: $sid gate FAILED (rc=$rc, attempt $((attempts+1))/$MAX_ATTEMPTS; see logs/gate-$sid.out)"
-    if [ $((attempts+1)) -ge "$MAX_ATTEMPTS" ]; then
-      $PICK set "$PLAN_DIR/steps/$sid.md" status blocked
-      ( flock 8; git -C "$PWT" add -A && git -C "$PWT" commit -q -m "plan($plan): $sid blocked after $MAX_ATTEMPTS attempts" ) 8>"$WORK/merge.lock"
-      buf+=$'\n'"result: $sid marked blocked"
-    fi
+    buf+=$'\n'"result: $sid MERGE CONFLICT (see logs/merge.err); worktree kept"
   fi
   printf '%s\n' "$buf"
 }
@@ -164,6 +315,8 @@ run_step() {
 # ---- main loop ----
 say "start: repo=$REPO_NAME plan=$plan agent=$agent jobs=$jobs work=$WORK"
 iter=0 stall=0 result=0
+skip=() waiting_ops=()   # steps not to start again in this run: operator steps that wait, agents not available
+in_list() { local x="$1"; shift; for y in "$@"; do [ "$x" = "$y" ] && return 0; done; return 1; }
 while :; do
   [ -f "$WORK/PAUSE" ] && { say "PAUSE found. Run --resume."; result=10; break; }
   [ -f "$WORK/STOP" ] && { say "STOP found."; result=10; break; }
@@ -179,6 +332,7 @@ while :; do
     st="$($PICK field "$(step_file_in "$PWT" "$sid")" status 2>/dev/null)"
     if [ "$st" = done ]; then git -C "$REPO" worktree remove --force "$d"; git -C "$REPO" branch -q -D "step/$plan/$sid" 2>/dev/null; continue; fi
     [ "$st" = blocked ] && continue
+    in_list "$sid" "${skip[@]}" && continue
     active+=("$sid")
   done
   active=("${active[@]:0:$jobs}")
@@ -186,12 +340,16 @@ while :; do
   if [ "${#batch[@]}" -lt "$jobs" ]; then
     while IFS= read -r line; do
       [ -n "$line" ] && batch+=("$(python3 -I -c 'import json,sys; print(json.loads(sys.argv[1])["id"])' "$line")")
-    done < <($PICK ready "$PLAN_DIR" --max "$jobs" --active "$(IFS=,; echo "${active[*]:-}")")
+    done < <($PICK ready "$PLAN_DIR" --max "$jobs" --active "$(IFS=,; echo "${active[*]:-}")" --skip "$(IFS=,; echo "${skip[*]:-}")")
   fi
   if [ "${#batch[@]}" -eq 0 ]; then
     summary="$($PICK summary "$PLAN_DIR")"; code=$?
     say "no step to run: $summary"
-    case $code in 0) say "ALL STEPS DONE"; result=0 ;; *) say "BLOCKED or waiting"; result=11 ;; esac
+    if [ "$code" = 0 ]; then say "ALL STEPS DONE"; result=0
+    elif [ "${#waiting_ops[@]}" -gt 0 ] || [ "$code" = 12 ]; then
+      say "WAITING FOR OPERATOR: ${waiting_ops[*]:-} (do the action, then run again)"; result=12
+    else say "BLOCKED or waiting"; result=11
+    fi
     break
   fi
 
@@ -199,6 +357,7 @@ while :; do
   say "batch $iter: ${batch[*]}"
   pids=()
   for sid in "${batch[@]}"; do
+    rm -f "$WORK/results/$sid"
     run_step "$sid" 9>&- &
     pids+=($!)
   done
@@ -208,6 +367,8 @@ while :; do
     r="$(cat "$WORK/results/$sid" 2>/dev/null)"
     [ "$r" = limit ] && limited=1
     [ "$r" = done ] && progressed=1
+    [ "$r" = wait ] && { skip+=("$sid"); waiting_ops+=("$sid"); }
+    [ "$r" = unavailable ] && skip+=("$sid")
   done
   say "batch $iter finished; spent \$$(spent_usd)"
   if [ "$limited" = 1 ]; then

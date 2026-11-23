@@ -1,6 +1,6 @@
 ---
 id: 05-docs
-status: pending
+status: done
 depends_on: [01-baseline-records, 02-fanout-tool, 04-route-report, 07-secret-guard]
 touches:
   - README.md
@@ -10,9 +10,9 @@ touches:
   - plans/runner-routing/steps/05-docs.md
 lane: none
 gate: python3 scripts/check_context.py && git diff --check && grep -q 'fanout.py' README.md && grep -q 'operator' docs/routing.md && grep -q 'report.py' AGENTS.md
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: claude cli-default
+claimed_at: "2026-11-23T22:32:13Z"
+evidence: gate passed 2026-11-23 (driver-verified)
 ---
 
 # Write the routing policy and update the README and the agent contract
