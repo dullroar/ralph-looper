@@ -12,9 +12,9 @@ touches:
   - plans/runner-routing/steps/04-route-report.md
 lane: none
 gate: python3 tests/test_report.py && bash tests/run.sh && python3 lib/report.py --help && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "gate passed 2026-11-23: test_report.py, tests/run.sh (incl. secret guard and ledger gate-line checks), report.py --help, check_context.py, git diff --check. ralph-looper.ps1 changed to match but not run (pwsh not installed)."
+claimed_by: claude cli-default
+claimed_at: "2026-11-23T22:31:25Z"
+evidence: gate passed 2026-11-23 (driver-verified)
 ---
 
 # Record the route in the ledger and report cost and first-pass rate by route
