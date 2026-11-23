@@ -1,6 +1,6 @@
 # Step routing
 
-This document tells how the driver (`ralph-looper` and `ralph-looper.ps1`) selects the executor for each step, and how the driver checks the work of a step. The routing policy (which work goes to which executor) is added by step 05 of the `runner-routing` plan.
+This document tells how the driver (`ralph-looper` and `ralph-looper.ps1`) selects the executor for each step, and how the driver checks the work of a step. The routing policy (which work goes to which executor) is in the last part of this document, for plan authors.
 
 ## Front matter keys
 
@@ -75,3 +75,68 @@ Later plans check these words before they start.
 | 11 | Blocked, or no step can run. |
 | 12 | Waiting for operator. |
 | 75 | Usage limit (handoff). |
+
+## Routing policy for plan authors
+
+Send each piece of work to the cheapest executor that can do it. The gate decides if the work is done. The route does not change what the gate must prove.
+
+| Work | Route |
+| --- | --- |
+| Checks, builds, index generation, imports, measurements | `script` step or CI job. No model. |
+| Bounded, well-specified edits with a strong gate (ports, fixtures, doc moves) | `local`, with `fallback` to a cloud agent |
+| Design, tricky parsers, migrations, adjudication, review | `claude` or `codex` (standard tier) |
+| Small checks of recorded results | cloud agent, `tier: light` |
+| Many independent text transformations | Batch API tool, run by the operator |
+| Approvals, publication, settings, credentials, native-speaker review | `operator` step |
+| Merge decision | CI required checks and the protected branch |
+
+### Rules
+
+- Prefer `script` when the work is deterministic. A model must not do what a script can do.
+- Use `local` only for bounded work with a strong gate. Always give a `fallback`. Use the route report (`python3 lib/report.py`) to decide where `local` is good enough.
+- The merge decision belongs to CI and the protected branch, not to the driver.
+
+### `script`
+
+- **Use it when:** a command gives the same result each time (checks, builds, index generation, imports, measurements).
+- **The gate must prove:** the output is correct, not only that the command exited with 0. Check the files or records that the command wrote.
+- **Cost and trust:** zero tokens and zero cost. The command is part of the plan, so review it like code. It runs with the step timeout and cannot change files outside `touches`.
+- **Fallback:** none. A failed script is a fault in the script or the input. Fix it. A model does not replace it.
+
+### `local`
+
+- **Use it when:** the work is bounded and well specified, and a strong gate can find a wrong result (ports, fixtures, doc moves).
+- **The gate must prove:** the full intended result. A local model can write work that looks right and is wrong. Do not use `local` where the gate is weak.
+- **Cost and trust:** no cloud cost. Quality is lower than for cloud agents. The operator installs and maintains the adapter.
+- **Fallback:** always set `fallback` to a cloud agent. After one failed attempt, the driver uses it.
+
+### `claude`, `codex`, `copilot` (standard tier)
+
+- **Use it when:** the work needs design, tricky parsing, migration, adjudication or review.
+- **The gate must prove:** the behavior, with tests. A review step needs a recorded result that the gate can check.
+- **Cost and trust:** the highest cost. Set `max_step_usd` and `max_usd` in `loop.yaml`. Agents have no credentials and cannot push.
+- **Fallback:** another cloud agent, if the first has no budget. Use `--on-limit handoff`.
+
+### Cloud agent with `tier: light`
+
+- **Use it when:** the work is a small check of recorded results.
+- **The gate must prove:** the same as for the standard tier.
+- **Cost and trust:** lower cost. After a failed attempt, the driver uses the standard tier.
+- **Fallback:** the standard tier, automatically.
+
+### Batch API work
+
+Batch API work is a plan-level tool in the repository that needs it. It is not a driver feature.
+
+- **Use it when:** there are many independent text transformations (translation drafts, reviewer passes).
+- **Who runs it:** the operator submits and collects the batch with an API key in the operator shell only. No agent and no driver process holds the key.
+- **Import:** a `script` step imports the result into the repository. The normal gates validate it.
+- **The gate must prove:** each result has the right format, is complete, and has no secret.
+- **Fallback:** run the work again as agent steps, or ask the operator to submit the batch again.
+
+### `operator`
+
+- **Use it for:** approvals, publication, settings changes, credentials and work for named humans (for example native-speaker review).
+- **The gate must prove:** the result of the human action, in a file or record that the gate can check. The driver runs the gate. It does not take the word of anyone.
+- **Cost and trust:** no model cost. The loop stops with exit code `12` until the operator acts. Agents never get bypass rights. An agent must not do the action for the operator.
+- **Fallback:** none. Wait for the operator.
