@@ -11,9 +11,9 @@ touches:
   - plans/runner-routing/steps/01-baseline-records.md
 lane: none
 gate: python3 tests/test_check_records.py && python3 scripts/check_records.py plans/runner-routing/baseline.tsv --min-rows 13 --columns repo,base,commit,context_check,test_command,test_result,ci_workflows,seconds --match 'commit=[0-9a-f]{40}' --match 'context_check=pass|fail|absent' && python3 scripts/build_indexes.py --check && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "gate command passed 2026-11-23 (17 unit tests ok, baseline.tsv 13 rows ok, indexes and context checks ok, git diff --check ok)"
+claimed_by: claude cli-default
+claimed_at: "2026-11-23T22:10:41Z"
+evidence: gate passed 2026-11-23 (driver-verified)
 ---
 
 # Build a TSV record checker and record the baseline of 13 repositories
