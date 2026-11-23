@@ -13,5 +13,6 @@ Step: {{STEP}}
 8. If you cannot finish, write what remains under "Resume notes" in the step file and commit. Then stop.
 9. If you are blocked, write the reason in "Resume notes". Do not guess.
 10. Never write secrets or personal data in any file. Write text in Simplified Technical English.
+11. Shell rules. Write and change files with the Edit and Write tools, not with shell redirects or heredocs. Run one simple command in each Bash call. Use paths inside the worktree, or the variables `REPOS_ROOT` and `RALPH_WORK`, not `~` paths. If one Bash command is denied, Bash is not disabled: the next simple command works. Run the check again as a simpler command and continue. Never stop because of one denial.
 
 End your answer with one line: `STEP-RESULT: {{STEP}} done|partial|blocked`
