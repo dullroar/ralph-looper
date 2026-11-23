@@ -1,6 +1,6 @@
 ---
 id: 04-route-report
-status: pending
+status: done
 depends_on: [03-step-routing, 07-secret-guard]
 touches:
   - lib/usage.py
@@ -14,7 +14,7 @@ lane: none
 gate: python3 tests/test_report.py && bash tests/run.sh && python3 lib/report.py --help && python3 scripts/check_context.py && git diff --check
 claimed_by: ""
 claimed_at: ""
-evidence: ""
+evidence: "gate passed 2026-11-23: test_report.py, tests/run.sh (incl. secret guard and ledger gate-line checks), report.py --help, check_context.py, git diff --check. ralph-looper.ps1 changed to match but not run (pwsh not installed)."
 ---
 
 # Record the route in the ledger and report cost and first-pass rate by route
@@ -40,4 +40,4 @@ If you cannot finish, write "Resume notes" below. Keep the status `in_progress`.
 
 ## Resume notes
 
-(none)
+(none) Step done. PowerShell driver not executed here (pwsh not installed).
