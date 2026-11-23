@@ -1,6 +1,6 @@
 ---
 id: 03-step-routing
-status: pending
+status: done
 depends_on: []
 touches:
   - ralph-looper
@@ -17,7 +17,7 @@ lane: none
 gate: bash tests/run.sh && bash tests/run-pwsh.sh && for c in step-agent operator-step script-step local-agent gate-from-plan-branch touches-enforced; do ./ralph-looper --capabilities | grep -qx "$c" || exit 1; done && python3 scripts/check_context.py && git diff --check
 claimed_by: ""
 claimed_at: ""
-evidence: ""
+evidence: "2026-11-23: gate (tests/run.sh, tests/run-pwsh.sh, --capabilities words, scripts/check_context.py, git diff --check) passed. tests/run.sh PASS with 12 scenarios. PowerShell test NOT RUN: pwsh not installed. ralph-looper.ps1 is reviewed by reading only; parity is not proven by execution."
 ---
 
 # Add per-step executors and close the gate and touches gaps
@@ -71,4 +71,8 @@ If you cannot finish, write "Resume notes" below. Keep the status `in_progress`.
 
 ## Resume notes
 
-(none)
+- Done on 2026-11-23. All work is committed on this step branch.
+- `tests/run.sh` covers the 8 required tests (scenarios 1, 2 and 5 to 11) and `--capabilities` (scenario 12).
+- `tests/run-pwsh.sh` printed `PowerShell test NOT RUN: pwsh not installed`. The PowerShell driver was not executed. Run `bash tests/run-pwsh.sh` on a host with `pwsh` before you claim parity.
+- The driver writes two new runtime folders: `<work>/base/` (the start commit of each step worktree) and `<work>/spec/` (the step file at that commit).
+- For a script step, the driver writes the ledger line itself, because step 04 owns `lib/usage.py`.
