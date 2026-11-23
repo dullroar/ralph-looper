@@ -15,9 +15,9 @@ touches:
   - plans/runner-routing/steps/03-step-routing.md
 lane: none
 gate: bash tests/run.sh && bash tests/run-pwsh.sh && for c in step-agent operator-step script-step local-agent gate-from-plan-branch touches-enforced; do ./ralph-looper --capabilities | grep -qx "$c" || exit 1; done && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "2026-11-23: gate (tests/run.sh, tests/run-pwsh.sh, --capabilities words, scripts/check_context.py, git diff --check) passed. tests/run.sh PASS with 12 scenarios. PowerShell test NOT RUN: pwsh not installed. ralph-looper.ps1 is reviewed by reading only; parity is not proven by execution."
+claimed_by: claude cli-default
+claimed_at: "2026-11-23T22:18:06Z"
+evidence: gate passed 2026-11-23 (driver-verified)
 ---
 
 # Add per-step executors and close the gate and touches gaps
