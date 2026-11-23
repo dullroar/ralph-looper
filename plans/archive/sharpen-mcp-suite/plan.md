@@ -4,6 +4,8 @@ gist: "Read me when: you want to run or resume the four bounded MCP tool catalog
 
 # Run four bounded MCP catalogs
 
+Completed and archived. The [verification record](./steps/02-verify-children.md#results) records all four local child plan commits and passing Docker gates. The parent verification merged at local commit `203afb5`. The run commands below describe the original active plan and worktree layout.
+
 The [target manifest](./targets.tsv) pins the commits that introduce each child plan. Each target implements its own native capability matrix, bounded tool schema, real Docker fixtures and consuming-agent guide. The libvips catalog is the coverage model. The metadata field support and rights audit receive dedicated acceptance checks. The GPX plan uses gpxpy and has no runtime dependency on the older parser.
 
 ## Steps
