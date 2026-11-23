@@ -21,8 +21,9 @@ For each of the 14 repositories in `enforcement-kit.md`:
 
 1. Apply the ruleset and `CODEOWNERS` if the plan supports them. Merge `CODEOWNERS` through a pull request.
 2. Push each probe from `probes/make_probe.sh` and open it as a draft pull request. Each must be blocked: a failed required check, or a required code owner review. Close the probe pull requests and delete the probe branches after.
-3. Test a checker crash: a probe that makes the controls exit 3 must not give a green check.
-4. Write one row in [enforcement.tsv](../enforcement.tsv): `state` is `required` if all probes were blocked, else `documented-gap` with the reason in `notes`. `probes` is `blocked N/N` or the list of probes that got through.
+3. Confirm that `bash scripts/install_hooks.sh --check` passes in every clone under `$REPOS_ROOT`, and run the secret-key probes against the hooks and CI first.
+4. Test a checker crash: a probe that makes the controls exit 3 must not give a green check.
+5. Write one row in [enforcement.tsv](../enforcement.tsv): `state` is `required` if all probes were blocked, else `documented-gap` with the reason in `notes`. `probes` is `blocked N/N` or the list of probes that got through.
 
 Commit `enforcement.tsv` on `plan/controls-rollout` while the driver is stopped. Then run the driver again.
 

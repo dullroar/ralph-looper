@@ -16,7 +16,8 @@ Each step makes the next work faster or more reliable:
 2. **One fan-out tool.** The [ralphify launcher](../archive/ralphify-repositories/rollout.py) and the [MCP fan-out](../archive/sharpen-mcp-suite/fanout.py) solved the same problem twice. Combine them into `lib/fanout.py` with tests. Every wave in the controls rollout uses it.
 3. **Per-step routing.** A step names its executor in front matter (`agent:`). The value `operator` means a human action whose gate the driver checks. The value `script` means a deterministic `run:` command with no model. The value `local` means the local model adapter. With this, a plan sends each piece of work to the cheapest executor that can do it. The gate still decides.
 4. **Close two trust gaps.** Now the driver reads the gate from the step file after the agent ran, so an agent can edit its own gate. The driver also commits all changes with `git add -A`. Make the driver read `gate`, `touches`, `agent` and `run` from the plan branch, and reject changes outside `touches`.
-5. **Measure the routes.** Add the route to the ledger and build `lib/report.py`. Later routing decisions use these measurements, not guesses.
+5. **Guard secrets everywhere.** No secret may be tracked, committed or pushed. The current scanner reads only context Markdown. Build `scripts/secret_guard.py` (all files, staged blobs, push ranges, history) with hooks, a CI job and a driver check before each merge. No model, no network.
+6. **Measure the routes.** Add the route to the ledger and build `lib/report.py`. Later routing decisions use these measurements, not guesses.
 
 The routing policy (which work goes where) is in `docs/routing.md` (written by `runner-routing`) after step 05. In summary:
 
@@ -37,8 +38,9 @@ The routing policy (which work goes where) is in `docs/routing.md` (written by `
 | [01-baseline-records](./steps/01-baseline-records.md) | Build `check_records.py` and record the 13-repository baseline. | none |
 | [02-fanout-tool](./steps/02-fanout-tool.md) | Combine the two launchers into a tested `lib/fanout.py`. | none |
 | [03-step-routing](./steps/03-step-routing.md) | Add per-step executors and close the gate and touches gaps, in bash and PowerShell. | none |
-| [04-route-report](./steps/04-route-report.md) | Record the route in the ledger and build `lib/report.py`. | 03 |
-| [05-docs](./steps/05-docs.md) | Write the routing policy and update the README and the agent contract. | 01, 02, 04 |
+| [07-secret-guard](./steps/07-secret-guard.md) | Build the secret guard, its hooks and its CI job. Audit all history. | 01 |
+| [04-route-report](./steps/04-route-report.md) | Record the route in the ledger, build `lib/report.py`, and run the secret guard before each merge. | 03, 07 |
+| [05-docs](./steps/05-docs.md) | Write the routing policy and update the README and the agent contract. | 01, 02, 04, 07 |
 | [06-verify](./steps/06-verify.md) | Run all tests from a clean clone and record the evidence. | 05 |
 
 ## Run it
@@ -51,11 +53,11 @@ export RALPH_WORK REPOS_ROOT
   --agent "$RALPH_AGENT" --jobs 3 --on-limit handoff
 ```
 
-The current driver does not know `agent:` in front matter. No step in this plan uses it. When the plan is done, review `plan/runner-routing` and merge it into `main` through a pull request. Then start the controls rollout from `main`.
+The current driver does not know `agent:` in front matter. No step in this plan uses it. When the plan is done, review `plan/runner-routing` and merge it into `main` through a pull request. Then run `bash scripts/install_hooks.sh` in every clone under `REPOS_ROOT` (hooks are local and are not cloned). Then start the controls rollout from `main`.
 
 ## Parallelism
 
-Steps 01, 02 and 03 run at the same time. Their `touches` do not overlap. Step 03 is the largest. It owns the driver files. Step 04 waits for 03 because it changes the same driver call to `lib/usage.py`. Step 05 owns `README.md`, `docs/README.md` and `AGENTS.md`, so no earlier step changes them.
+Steps 01, 02 and 03 run at the same time. Their `touches` do not overlap. Step 07 starts when 01 is done, because both change `scripts/AGENTS.md`. It runs while 02 and 03 run. Step 03 is the largest. It owns the driver files. Step 04 waits for 03 because it changes the same driver call to `lib/usage.py`. Step 05 owns `README.md`, `docs/README.md` and `AGENTS.md`, so no earlier step changes them.
 
 ## Risks
 

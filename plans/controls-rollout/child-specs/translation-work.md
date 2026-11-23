@@ -54,5 +54,5 @@ Five lanes run in parallel. The old loop ran one task at a time. Here each lane 
 - `review/packets/`, `review/repo-bundle.zip`, `review/canaries.key.json` and `review/units.index.jsonl` stay untracked. `repo.forbidden-artifacts` enforces this.
 - No step has the API key. Batch submission is always an operator step. Collection output is imported by `script` steps.
 - Each `fix-*` step touches one PO file and its generated Markdown (or one code family), so the driver can run many at once with `--jobs`.
-- Record the USD cap for each batch submission in the step. Use `tools/batch.py --dry-run` first and record the estimate.
+- The program has a total Batch API cap of USD 100. `tools/batch.py` enforces it from its cost records. Record the cap and the running total for each batch submission in the step. Use `tools/batch.py --dry-run` first and record the estimate.
 - The seed gate must prove that the plan is valid in a snapshot of the target: `lib/fanout.py ready` and the target's `scripts/check_plan.py`.

@@ -1,17 +1,18 @@
 # Owner decisions for the controls rollout. Step 02 waits until every row has approved=yes.
 # Change a default in the 'default' column before you approve it. Then commit on plan/controls-rollout.
 id	question	default	approved	notes
-shared_repo	Name of the shared library repository	dullroar/deterministic-controls	no	Created in step 04 from repo-template.
-visibility	Visibility of the shared library	public, MIT	no	Public CI in consumers must install it without a token.
-python_min	Minimum Python version of the library	3.11	no	tomllib is in the standard library from 3.11. Hosts and images use 3.12.
-manifest	Format of the consumer manifest	controls.toml (TOML, schema_version 1)	no	Selection and parameters only. No commands.
-distribution	How consumers install the library	pip from a pinned Git commit; no PyPI	no	PyPI can come later.
-pilots	Pilot repositories	metadata_driven_gx, duckdb-fs	no	One data and document repository and one code and FUSE repository.
-enforcement	When checks become required	advisory through the fleet wave; required in step 33	no	Only checks with a clean pilot record.
-translation_branch	Integration branch of the translation repository	loop/es-v4	no	It is the default branch on GitHub. Its local main is old.
-translation_push	Pushes from the translation repository	operator widens the pre-push hook to rollout/* and plan/* branches for these waves	no	The hook now allows only loop/es-v4 through loop/push-backup.sh.
-translation_stop	Old translation loop	keep loop/STOP; archive the loop files after adoption; do not resume loop/ralph.sh	no	The Part III checkpoint stays open until Jim acts on it.
-batch_api	Batch API use in the translation work	yes; key only in the operator shell; cap in USD set per submission	no	Set the cap in v4-es-1. No agent holds the key.
-local_route	Use the local model for bounded child steps	yes, always with a cloud fallback	no	local-coder-agent on PATH. Steps fall back when it is absent.
-compliance_poc_workflows	claude.yml and claude-code-review.yml in compliance_poc	do not change them; controls job runs with no secrets	no	They use secrets. Separate decision to change them.
-child_agent	Default cloud agent for child plans	codex, with claude as handoff	no	Change per wave on the fanout command line.
+shared_repo	Name of the shared library repository	dullroar/deterministic-controls	yes	Created in step 04 from repo-template. Approved 2026-11-23.
+visibility	Visibility of the shared library	public, MIT	yes	Public CI in consumers must install it without a token. Approved 2026-11-23.
+python_min	Minimum Python version of the library	3.11	yes	tomllib is in the standard library from 3.11. Hosts and images use 3.12. Approved 2026-11-23.
+manifest	Format of the consumer manifest	controls.toml (TOML, schema_version 1)	yes	Selection and parameters only. No commands. Approved 2026-11-23.
+distribution	How consumers install the library	pip from a pinned Git commit; no PyPI	yes	PyPI can come later. Approved 2026-11-23.
+pilots	Pilot repositories	metadata_driven_gx, duckdb-fs	yes	One data and document repository and one code and FUSE repository. Approved 2026-11-23.
+enforcement	When checks become required	advisory through the fleet wave; required in step 34 (secret guard: required at once, see secret_guard)	yes	Only checks with a clean pilot record. Approved 2026-11-23.
+translation_branch	Integration branch of the translation repository	loop/es-v4	yes	It is the default branch on GitHub. Its local main is old. Approved 2026-11-23.
+translation_push	Pushes from the translation repository	operator widens the pre-push hook to rollout/* and plan/* branches for these waves	yes	The hook now allows only loop/es-v4 through loop/push-backup.sh. Approved 2026-11-23.
+translation_stop	Old translation loop	keep loop/STOP; archive the loop files after adoption; do not resume loop/ralph.sh	yes	The Part III checkpoint stays open until Jim acts on it. Approved 2026-11-23.
+batch_api	Batch API use in the translation work	yes; key only in the operator shell; total USD cap 100 for all batch submissions in the program; each submission records its own cap and the running total	yes	Owner decision 2026-11-23: the program stops at USD 100. Confirm that the credits apply to API (Batch) usage, not only to the apps and Claude Code.
+local_route	Use the local model for bounded child steps	yes, always with a cloud fallback	yes	local-coder-agent on PATH. Steps fall back when it is absent. Approved 2026-11-23.
+compliance_poc_workflows	claude.yml and claude-code-review.yml in compliance_poc	do not change them; controls job runs with no secrets	yes	They use secrets. Separate decision to change them. Approved 2026-11-23.
+child_agent	Default cloud agent for child plans	codex, with claude as handoff	yes	Change per wave on the fanout command line. Approved 2026-11-23.
+secret_guard	Secret protection in every repository	scripts/secret_guard.py required from the first adoption commit in CI, in pre-commit and pre-push hooks in every clone, and in the driver before each merge; no advisory phase	yes	A missed secret cannot be undone by a later fix. Approved 2026-11-23.

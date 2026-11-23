@@ -6,7 +6,7 @@ touches:
   - plans/runner-routing/steps/06-verify.md
 lane: none
 tier: light
-gate: bash tests/run.sh && bash tests/run-pwsh.sh && python3 tests/test_fanout.py && python3 tests/test_report.py && python3 tests/test_check_records.py && python3 scripts/check_context.py && git diff --check
+gate: bash tests/run.sh && bash tests/run-pwsh.sh && python3 tests/test_fanout.py && python3 tests/test_report.py && python3 tests/test_check_records.py && python3 tests/test_secret_guard.py && python3 scripts/secret_guard.py --history && bash scripts/install_hooks.sh --self-test && python3 scripts/check_context.py && git diff --check
 claimed_by: ""
 claimed_at: ""
 evidence: ""
