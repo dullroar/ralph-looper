@@ -9,9 +9,9 @@ touches:
   - plans/runner-routing/steps/02-fanout-tool.md
 lane: none
 gate: python3 tests/test_fanout.py && python3 lib/fanout.py --help && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "gate passed 2026-11-23: python3 tests/test_fanout.py (9 tests OK), fanout.py --help, check_context.py, git diff --check"
+claimed_by: claude cli-default
+claimed_at: "2026-11-23T22:13:31Z"
+evidence: gate passed 2026-11-23 (driver-verified)
 ---
 
 # Combine the two plan-local launchers into one tested fan-out tool
