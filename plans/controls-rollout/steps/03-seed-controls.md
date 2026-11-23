@@ -7,9 +7,9 @@ touches:
   - plans/controls-rollout/steps/03-seed-controls.md
 lane: none
 gate: python3 lib/fanout.py ready --plan-dir plans/controls-rollout --wave controls && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "gate passed 2026-11-23: python3 lib/fanout.py ready --plan-dir plans/controls-rollout --wave controls (ready seed bootstrap on main, 12 pending steps), check_context.py ok, git diff --check ok"
+claimed_by: claude cli-default
+claimed_at: "2026-11-23T23:39:50Z"
+evidence: gate passed 2026-11-23 (driver-verified)
 ---
 
 # Write the seed for the `controls` wave
