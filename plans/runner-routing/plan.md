@@ -25,7 +25,7 @@ The routing policy (which work goes where) is in `docs/routing.md` (written by `
 | --- | --- |
 | Checks, builds, index generation, imports, measurements | `script` step or CI job. No model. |
 | Bounded, well-specified edits with a strong gate (ports, fixtures, doc moves) | `local`, with `fallback` to a cloud agent |
-| Design, tricky parsers, migrations, adjudication, review | `claude` or `codex` (standard tier) |
+| Design, tricky parsers, migrations, adjudication, review | `claude` (standard tier). `codex` only by explicit owner choice. |
 | Small checks of recorded results | cloud agent, `tier: light` |
 | Many independent text transformations (translation drafts, reviewer passes) | Batch API tool, submitted by the operator. Its output goes through a `script` import and the normal gates. |
 | Approvals, publication, settings, credentials, native-speaker review | `operator` step |
