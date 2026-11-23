@@ -3,6 +3,12 @@
 
 Usage: usage.py --agent claude|codex|copilot|other --out FILE --ledger FILE --rc N --seconds N
                 [--step ID] [--tier T] [--model M] [--effort E] [--head-before SHA] [--cwd DIR]
+                [--route R] [--attempt N]
+       usage.py --record-gate pass|fail --ledger FILE --step ID [--route R] [--attempt N]
+
+Each run line has `route`, `attempt` and `gate` (`none` until the gate runs). The mode
+--record-gate appends a short line {kind: gate, step, route, attempt, gate} after the gate ran.
+Old ledger lines without these fields stay valid.
 
 Prints the usage block (never the prompt) to stdout. The last line is `outcome: recorded|limit`.
 Cost: claude gives USD. copilot gives AI credits (USD is an estimate). codex gives tokens only.
@@ -29,8 +35,8 @@ def git(cwd: str, *a: str) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--agent", required=True)
-    ap.add_argument("--out", required=True)
+    ap.add_argument("--agent", default="")
+    ap.add_argument("--out", default="")
     ap.add_argument("--ledger", required=True)
     ap.add_argument("--rc", type=int, default=0)
     ap.add_argument("--seconds", type=int, default=0)
@@ -40,11 +46,22 @@ def main() -> int:
     ap.add_argument("--effort", default="")
     ap.add_argument("--head-before", default="")
     ap.add_argument("--cwd", default=".")
+    ap.add_argument("--route", default="")
+    ap.add_argument("--attempt", type=int, default=0)
+    ap.add_argument("--record-gate", choices=("pass", "fail"), default="")
     a = ap.parse_args()
+    if a.record_gate:
+        line = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "kind": "gate", "step": a.step,
+                "route": a.route, "attempt": a.attempt, "gate": a.record_gate}
+        with open(a.ledger, "a", encoding="utf-8") as f:
+            f.write(json.dumps(line) + "\n")
+        return 0
+    if not a.agent or not a.out:
+        ap.error("--agent and --out are required unless --record-gate is used")
     agent, rc = a.agent, a.rc
 
     rec: dict = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "step": a.step, "agent": agent,
-                 "exit_code": rc, "seconds": a.seconds, "tier": a.tier, "model_requested": a.model,
+                 "route": a.route or agent, "attempt": a.attempt, "gate": "none", "exit_code": rc, "seconds": a.seconds, "tier": a.tier, "model_requested": a.model,
                  "effort_requested": a.effort, "cost_usd": None, "cost_est_usd": None, "ai_credits": None,
                  "tok_fresh_in": None, "tok_cache_read": None, "tok_cache_write": None, "tok_out": None,
                  "tok_reasoning": None, "api_calls": None}

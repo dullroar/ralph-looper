@@ -116,11 +116,12 @@ override_for() {
 can_run() { agent_known "$1" && { override_for "$1" >/dev/null || agent_available "$1"; }; }
 cmd_for() { override_for "$1" || agent_cmd "$1"; }
 
-ledger_script() {  # ledger_script STEP RC SECONDS TIER : a ledger line for a script step (no model)
+ledger_script() {  # ledger_script STEP RC SECONDS TIER ATTEMPT : a ledger line for a script step (no model)
   python3 -I - "$LEDGER" "$@" <<'PY'
 import json, sys, time
-ledger, step, rc, secs, tier = sys.argv[1:6]
+ledger, step, rc, secs, tier, attempt = sys.argv[1:7]
 rec = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "step": step, "agent": "script",
+       "route": "script", "attempt": int(attempt), "gate": "none",
        "exit_code": int(rc), "seconds": int(secs), "tier": tier, "model_requested": "", "effort_requested": "",
        "cost_usd": 0.0, "cost_est_usd": 0.0, "ai_credits": 0, "tok_fresh_in": 0, "tok_cache_read": 0,
        "tok_cache_write": 0, "tok_out": 0, "tok_reasoning": 0, "api_calls": 0, "model_reported": "",
@@ -142,6 +143,11 @@ drop_worktree() {  # drop_worktree SID : remove the step worktree, its branch an
   git -C "$REPO" worktree remove --force "$WT/$1" 2>/dev/null
   git -C "$REPO" branch -q -D "step/$plan/$1" 2>/dev/null
   rm -f "$WORK/base/$1"
+}
+
+record_gate() {  # record_gate pass|fail : a short ledger line for the gate result (uses the locals of run_step)
+  python3 -I "$HERE/lib/usage.py" --record-gate "$1" --ledger "$LEDGER" --step "$sid" --route "$exe" \
+    --attempt "$((attempts+1))" > /dev/null 2>&1 || true
 }
 
 # attempt_failed MESSAGE : count a failed attempt; block the step after MAX_ATTEMPTS.
@@ -239,7 +245,7 @@ run_step() {
       echo "script step has no run: command" > "$out.err"; rc=2
     fi
     secs=$(( $(date +%s) - start ))
-    ledger_script "$sid" "$rc" "$secs" "$tier"
+    ledger_script "$sid" "$rc" "$secs" "$tier" "$((attempts+1))"
     buf+=$'\n'"--- usage: step=$sid agent=script ---"$'\n'"time: ${secs}s  exit_code: $rc"$'\n'"cost: usd=0 (no model)"
   else
     prompt="$WORK/logs/prompt-$sid.md"
@@ -249,7 +255,7 @@ run_step() {
     rc=$?
     secs=$(( $(date +%s) - start ))
     ublock="$(python3 -I "$HERE/lib/usage.py" --agent "$exe" --out "$out" --ledger "$LEDGER" --rc "$rc" \
-        --seconds "$secs" --step "$sid" --tier "$tier" --model "$model" --effort "$effort" \
+        --seconds "$secs" --step "$sid" --tier "$tier" --model "$model" --effort "$effort" --route "$exe" --attempt "$((attempts+1))" \
         --head-before "$head_before" --cwd "$swt")"
     buf+=$'\n'"$ublock"
     if grep -q '^outcome: limit' <<< "$ublock"; then
@@ -264,9 +270,11 @@ run_step() {
   fi
   gate="$($PICK field "$spec" gate)"
   if [ -z "$gate" ] || ! ( cd "$swt" && timeout "${GATE_TIMEOUT_MIN}m" bash -c "$gate" ) < /dev/null > "$WORK/logs/gate-$sid.out" 2>&1; then
+    record_gate fail
     attempt_failed "$sid gate FAILED (rc=$rc, attempt $((attempts+1))/$MAX_ATTEMPTS; see logs/gate-$sid.out)"
     printf '%s\n' "$buf"; return
   fi
+  record_gate pass
   allowed_txt="$($PICK scope "$swt" "$base" "$spec" "$rel" 2> "$WORK/logs/scope-$sid.out")"; scope_rc=$?
   if [ "$scope_rc" != 0 ]; then
     attempt_failed "$sid changed files outside touches: $(sed 's/^outside touches: //' "$WORK/logs/scope-$sid.out" | paste -sd ' ' -)"
@@ -278,7 +286,21 @@ run_step() {
   $PICK set "$swt/$rel" claimed_by "$exe ${model:-cli-default}"
   $PICK set "$swt/$rel" claimed_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   $PICK set "$swt/$rel" evidence "gate passed $(date -u +%Y-%m-%d) (driver-verified)"
-  GIT_LITERAL_PATHSPECS=1 git -C "$swt" add -A -- "$rel" "${allowed[@]}" && git -C "$swt" commit -q -m "plan($plan): $sid done" || true
+  GIT_LITERAL_PATHSPECS=1 git -C "$swt" add -A -- "$rel" "${allowed[@]}"
+  # Secret guard: the commits the agent made and the staged files. A finding fails the attempt. Nothing is merged.
+  local guard guard_out="$WORK/logs/secret-guard-$sid.out"
+  guard="$HERE/scripts/secret_guard.py"
+  # Use the guard of the target repository at the plan commit (not the agent's copy), else the runner copy.
+  if git -C "$REPO" show "$base:scripts/secret_guard.py" > "$WORK/spec/guard-$sid.py" 2>/dev/null; then
+    guard="$WORK/spec/guard-$sid.py"
+  fi
+  export SECRET_GUARD="$HERE/scripts/secret_guard.py"
+  if ! { python3 -I "$guard" --root "$swt" --staged && python3 -I "$guard" --root "$swt" --range "$base..HEAD"; } > "$guard_out" 2>&1; then
+    git -C "$swt" reset -q --hard "$base"; git -C "$swt" clean -qfd
+    attempt_failed "$sid secret guard FAILED (see logs/secret-guard-$sid.out)"
+    printf '%s\n' "$buf"; return
+  fi
+  git -C "$swt" commit -q -m "plan($plan): $sid done" || true
   if merge_step "$sid" "$br"; then
     drop_worktree "$sid"
     rm -f "$WORK/attempts/$sid"; echo done > "$WORK/results/$sid"

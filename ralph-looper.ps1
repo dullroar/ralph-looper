@@ -240,8 +240,8 @@ function Remove-StepWorktree([string]$sid) {
     Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $Work "base/$sid")
 }
 
-function Write-ScriptLedger([string]$sid, [int]$rc, [int]$secs, [string]$tier) {
-    $rec = [ordered]@{ ts = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'); step = $sid; agent = 'script'
+function Write-ScriptLedger([string]$sid, [int]$rc, [int]$secs, [string]$tier, [int]$attempt) {
+    $rec = [ordered]@{ ts = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'); step = $sid; agent = 'script'; route = 'script'; attempt = $attempt; gate = 'none'
         exit_code = $rc; seconds = $secs; tier = $tier; model_requested = ''; effort_requested = ''
         cost_usd = 0.0; cost_est_usd = 0.0; ai_credits = 0; tok_fresh_in = 0; tok_cache_read = 0
         tok_cache_write = 0; tok_out = 0; tok_reasoning = 0; api_calls = 0; model_reported = ''
@@ -342,7 +342,7 @@ function Invoke-Step([string]$sid) {
         if ($runCmd) { $rc = Invoke-Shell $runCmd $swt $out $StepTimeoutMin }
         else { Set-Content "$out.err" 'script step has no run: command'; $rc = 2 }
         $secs = [int]((Get-Date) - $t0).TotalSeconds
-        Write-ScriptLedger $sid $rc $secs $tier
+        Write-ScriptLedger $sid $rc $secs $tier ($attempts + 1)
         $buf.Add("--- usage: step=$sid agent=script ---"); $buf.Add("time: ${secs}s  exit_code: $rc"); $buf.Add('cost: usd=0 (no model)')
     } else {
         $promptText = (Get-Content (Join-Path $Here 'lib/PROMPT.md') -Raw).Replace('{{PLAN}}', $Plan).Replace('{{STEP}}', $sid)
@@ -354,7 +354,7 @@ function Invoke-Step([string]$sid) {
             $rc = Invoke-Timed $spec2.Exe $spec2.Args $swt $(if ($spec2.Stdin) { $promptText } else { '' }) $out "$out.err" $StepTimeoutMin
         }
         $secs = [int]((Get-Date) - $t0).TotalSeconds
-        $ublock = & $Py -I $Usage --agent $exe --out $out --ledger $Ledger --rc $rc --seconds $secs --step $sid --tier $tier --model $model --effort $effort --head-before $headBefore --cwd $swt
+        $ublock = & $Py -I $Usage --agent $exe --out $out --ledger $Ledger --rc $rc --seconds $secs --step $sid --tier $tier --model $model --effort $effort --route $exe --attempt ($attempts + 1) --head-before $headBefore --cwd $swt
         $buf.Add(($ublock -join "`n"))
         if ($ublock -match '(?m)^outcome: limit') { Set-Content $res 'limit'; $buf -join "`n"; return }
     }
@@ -368,6 +368,7 @@ function Invoke-Step([string]$sid) {
     $gate = Get-Field $spec 'gate'
     $gateOk = $false
     if ($gate) { $gateOk = ((Invoke-Shell $gate $swt (Join-Path $Work "logs/gate-$sid.out") $GateTimeoutMin) -eq 0) }
+    & $Py -I $Usage --record-gate $(if ($gateOk) { 'pass' } else { 'fail' }) --ledger $Ledger --step $sid --route $exe --attempt ($attempts + 1) *> $null
     if (-not $gateOk) {
         Register-Failure $sid $attempts $buf "$sid gate FAILED (rc=$rc, attempt $($attempts + 1)/$MaxAttempts; see logs/gate-$sid.out)"
         $buf -join "`n"; return
@@ -386,6 +387,21 @@ function Invoke-Step([string]$sid) {
     $env:GIT_LITERAL_PATHSPECS = '1'
     git -C $swt add -A -- $rel @($allowed | Where-Object { $_ })
     Remove-Item Env:GIT_LITERAL_PATHSPECS
+    # Secret guard: the commits the agent made and the staged files. A finding fails the attempt. Nothing is merged.
+    $guardOut = Join-Path $Work "logs/secret-guard-$sid.out"
+    $guard = Join-Path $Here 'scripts/secret_guard.py'
+    $guardCopy = Join-Path $Work "spec/guard-$sid.py"
+    $guardText = & git -C $RepoRoot show "${startRev}:scripts/secret_guard.py" 2>$null
+    if ($LASTEXITCODE -eq 0) { Set-Content -Path $guardCopy -Value $guardText; $guard = $guardCopy }
+    $env:SECRET_GUARD = Join-Path $Here 'scripts/secret_guard.py'
+    & $Py -I $guard --root $swt --staged *> $guardOut
+    $guardRc = $LASTEXITCODE
+    if ($guardRc -eq 0) { & $Py -I $guard --root $swt --range "$startRev..HEAD" *>> $guardOut; $guardRc = $LASTEXITCODE }
+    if ($guardRc -ne 0) {
+        git -C $swt reset -q --hard $startRev; git -C $swt clean -qfd
+        Register-Failure $sid $attempts $buf "$sid secret guard FAILED (see logs/secret-guard-$sid.out)"
+        $buf -join "`n"; return
+    }
     git -C $swt commit -q -m "plan($Plan): $sid done"
     if (Merge-Step $sid $br) {
         Remove-StepWorktree $sid

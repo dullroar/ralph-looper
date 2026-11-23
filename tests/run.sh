@@ -24,6 +24,7 @@ mk2 script 01-s 01-s.out "test -f 01-s.out" $'agent: script\nrun: echo made by s
 mk2 operator 01-op 01-op.out "test -f $TMP/operator-marker" $'agent: operator\n'
 mk2 local 01-l 01-l.out "test -f 01-l.out" $'agent: local\nfallback: claude\n'
 mk2 nolocal 01-n 01-n.out "test -f 01-n.out" $'agent: local\n'
+mk2 secret 01-k 01-k.out "test -f 01-k.out"
 mk2 newstep 01-p "01-p.out plans/newstep/steps/*.md" "test -f 01-p.out"
 git add -A; git commit -q -m init
 fail() { echo "FAIL: $*"; exit 1; }
@@ -97,7 +98,7 @@ run_plan script FAKE_LOG="$TMP/script.calls"
 git show plan/script:01-s.out | grep -q 'made by script' || fail "script output not merged"
 python3 -I -c 'import json,sys
 r=[json.loads(l) for l in open(sys.argv[1]) if l.strip()]
-s=[x for x in r if x["step"]=="01-s"]
+s=[x for x in r if x["step"]=="01-s" and x.get("kind")!="gate"]
 assert s and all(x["agent"]=="script" and x["cost_usd"]==0 and x["tok_out"]==0 for x in s), r' "$W/script/ledger.jsonl" || fail "ledger has no script line"
 
 echo "== 9. operator step: waits (exit 12), then passes with no attempt =="
@@ -133,6 +134,32 @@ run_plan newstep FAKE_MODE=newstep
 [ "$rc" = 0 ] || { cat "$TMP/newstep.out"; fail "newstep exit $rc"; }
 on_plan newstep zz-child 'status: done' || fail "new step not run"
 git show plan/newstep:zz-child.out >/dev/null || fail "new step output not merged"
+
+echo "== 11b. secret guard: a synthetic key fails the step and is not merged =="
+cat > "$TMP/secret-agent.sh" <<'AGENT'
+#!/usr/bin/env bash
+cat > /dev/null
+{ printf '%s\n' "-----BEGIN ""PRIVATE KEY-----"; echo "QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo="; printf '%s\n' "-----END ""PRIVATE KEY-----"; } > "${RALPH_STEP}.out"
+git add -A && git commit -q -m "fake: ${RALPH_STEP}"
+printf '{"result":"STEP-RESULT: %s done","total_cost_usd":0.01,"num_turns":1,"usage":{"input_tokens":1,"output_tokens":1},"modelUsage":{"fake-model":{"outputTokens":1}}}\n' "$RALPH_STEP"
+AGENT
+run_plan secret AGENT_CMD="bash $TMP/secret-agent.sh"
+[ "$rc" = 11 ] || { cat "$TMP/secret.out"; fail "secret exit $rc, expected 11"; }
+grep -q 'result: 01-k secret guard FAILED' "$W/secret/driver.out" || fail "no secret guard FAILED message"
+git show plan/secret:01-k.out >/dev/null 2>&1 && fail "secret file merged"
+git grep -q 'PRIVATE KEY' plan/secret 2>/dev/null && fail "key on the plan branch"
+
+echo "== 11c. ledger has route, attempt and a gate line =="
+python3 -I -c 'import json,sys
+r=[json.loads(l) for l in open(sys.argv[1]) if l.strip()]
+run=[x for x in r if x.get("step")=="01-s" and x.get("kind")!="gate"]
+gl=[x for x in r if x.get("kind")=="gate" and x.get("step")=="01-s"]
+assert run and run[0]["route"]=="script" and run[0]["attempt"]==1, r
+assert gl and gl[0]["gate"]=="pass" and gl[0]["attempt"]==1, r' "$W/script/ledger.jsonl" || fail "ledger lacks route/attempt/gate line"
+python3 -I -c 'import json,sys
+r=[json.loads(l) for l in open(sys.argv[1]) if l.strip()]
+assert any(x.get("kind")=="gate" and x["gate"]=="fail" for x in r), r' "$W/gatefail/ledger.jsonl" || fail "no failing gate line"
+python3 -I "$HERE/lib/report.py" --work "$W" > "$TMP/report.out" || fail "report failed on test ledgers"
 
 echo "== 12. --capabilities =="
 [ "$("$HERE/ralph-looper" --capabilities | paste -sd ' ' -)" = "step-agent operator-step script-step local-agent gate-from-plan-branch touches-enforced" ] || fail "capabilities"
