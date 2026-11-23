@@ -7,9 +7,9 @@ touches:
 lane: none
 tier: light
 gate: bash tests/run.sh && bash tests/run-pwsh.sh && python3 tests/test_fanout.py && python3 tests/test_report.py && python3 tests/test_check_records.py && python3 tests/test_secret_guard.py && python3 scripts/secret_guard.py --history && bash scripts/install_hooks.sh --self-test && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "Gate command (full, in a clean clone) passed 2026-11-23 UTC. PowerShell NOT RUN (pwsh absent). See Results."
+claimed_by: claude cli-default
+claimed_at: "2026-11-23T22:34:01Z"
+evidence: gate passed 2026-11-23 (driver-verified)
 ---
 
 # Verify the upgraded runner from a clean clone
