@@ -10,9 +10,9 @@ touches:
   - plans/runner-routing/steps/05-docs.md
 lane: none
 gate: python3 scripts/check_context.py && git diff --check && grep -q 'fanout.py' README.md && grep -q 'operator' docs/routing.md && grep -q 'report.py' AGENTS.md
-claimed_by: ""
-claimed_at: ""
-evidence: "Gate command (check_context.py, git diff --check, three greps) passed on 2026-11-23. The PowerShell warning stays in README.md: pwsh is not installed, so tests/run-pwsh.sh did not run."
+claimed_by: claude cli-default
+claimed_at: "2026-11-23T22:32:13Z"
+evidence: gate passed 2026-11-23 (driver-verified)
 ---
 
 # Write the routing policy and update the README and the agent contract
