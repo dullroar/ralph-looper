@@ -1,15 +1,15 @@
 ---
 id: 02-owner-decisions
-status: pending
+status: done
 depends_on: [01-preflight]
 touches:
   - plans/controls-rollout/steps/02-owner-decisions.md
 lane: none
 agent: operator
 gate: python3 scripts/check_records.py plans/controls-rollout/decisions.tsv --min-rows 15 --columns id,question,default,approved --require approved=yes
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: operator
+claimed_at: "2026-11-23T23:34:30Z"
+evidence: gate passed 2026-11-23 (operator step, driver-verified)
 ---
 
 # Operator: approve the owner decisions
