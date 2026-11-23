@@ -1,0 +1,3 @@
+repo	base	child_plan	mode	source	run
+metadata_driven_gx	main	adopt-controls	seed	seeds/pilot/metadata_driven_gx	yes
+duckdb-fs	main	adopt-controls	seed	seeds/pilot/duckdb-fs	yes

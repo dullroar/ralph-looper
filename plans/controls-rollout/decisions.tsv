@@ -1,0 +1,17 @@
+# Owner decisions for the controls rollout. Step 02 waits until every row has approved=yes.
+# Change a default in the 'default' column before you approve it. Then commit on plan/controls-rollout.
+id	question	default	approved	notes
+shared_repo	Name of the shared library repository	dullroar/deterministic-controls	no	Created in step 04 from repo-template.
+visibility	Visibility of the shared library	public, MIT	no	Public CI in consumers must install it without a token.
+python_min	Minimum Python version of the library	3.11	no	tomllib is in the standard library from 3.11. Hosts and images use 3.12.
+manifest	Format of the consumer manifest	controls.toml (TOML, schema_version 1)	no	Selection and parameters only. No commands.
+distribution	How consumers install the library	pip from a pinned Git commit; no PyPI	no	PyPI can come later.
+pilots	Pilot repositories	metadata_driven_gx, duckdb-fs	no	One data and document repository and one code and FUSE repository.
+enforcement	When checks become required	advisory through the fleet wave; required in step 33	no	Only checks with a clean pilot record.
+translation_branch	Integration branch of the translation repository	loop/es-v4	no	It is the default branch on GitHub. Its local main is old.
+translation_push	Pushes from the translation repository	operator widens the pre-push hook to rollout/* and plan/* branches for these waves	no	The hook now allows only loop/es-v4 through loop/push-backup.sh.
+translation_stop	Old translation loop	keep loop/STOP; archive the loop files after adoption; do not resume loop/ralph.sh	no	The Part III checkpoint stays open until Jim acts on it.
+batch_api	Batch API use in the translation work	yes; key only in the operator shell; cap in USD set per submission	no	Set the cap in v4-es-1. No agent holds the key.
+local_route	Use the local model for bounded child steps	yes, always with a cloud fallback	no	local-coder-agent on PATH. Steps fall back when it is absent.
+compliance_poc_workflows	claude.yml and claude-code-review.yml in compliance_poc	do not change them; controls job runs with no secrets	no	They use secrets. Separate decision to change them.
+child_agent	Default cloud agent for child plans	codex, with claude as handoff	no	Change per wave on the fanout command line.

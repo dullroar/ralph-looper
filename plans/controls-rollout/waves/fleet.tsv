@@ -1,0 +1,9 @@
+repo	base	child_plan	mode	source	run
+compliance_poc	master	adopt-controls	seed	seeds/fleet/compliance_poc	yes
+ffmpeg_mcp	main	adopt-controls	seed	seeds/fleet/ffmpeg_mcp	yes
+gpx_parser	master	adopt-controls	seed	seeds/fleet/gpx_parser	yes
+lmdb-fs	main	adopt-controls	seed	seeds/fleet/lmdb-fs	yes
+metadata_mcp	main	adopt-controls	seed	seeds/fleet/metadata_mcp	yes
+pandoc_mcp	main	adopt-controls	seed	seeds/fleet/pandoc_mcp	yes
+sample_parse	master	adopt-controls	seed	seeds/fleet/sample_parse	yes
+vips_mcp	main	adopt-controls	seed	seeds/fleet/vips_mcp	yes

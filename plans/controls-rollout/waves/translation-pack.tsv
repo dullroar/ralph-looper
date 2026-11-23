@@ -1,0 +1,2 @@
+repo	base	child_plan	mode	source	run
+deterministic-controls	main	translation-pack	seed	seeds/translation-pack	yes

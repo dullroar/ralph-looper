@@ -1,0 +1,44 @@
+---
+id: 36-final-audit
+status: pending
+depends_on: [34-apply-enforcement, 35-route-report]
+touches:
+  - plans/controls-rollout/final-audit.md
+  - plans/controls-rollout/steps/36-final-audit.md
+lane: none
+gate: for w in controls template pilot fleet translation-adopt translation-pack translation-work; do python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave $w || exit 1; done && python3 scripts/check_records.py plans/controls-rollout/enforcement.tsv --min-rows 14 && test -s plans/controls-rollout/final-audit.md && python3 scripts/check_context.py && git diff --check
+claimed_by: ""
+claimed_at: ""
+evidence: ""
+---
+
+# Audit the program and write the backlog
+
+Source phase 17. Confirm that the program is one coherent system, and say plainly what it does not prove.
+
+## Change
+
+- `final-audit.md`:
+  - The adoption matrix: each repository, its pin, its profile, its receipt location, its enforcement state, and its rollback command.
+  - The baseline comparison: run each repository's context check now and compare with `plans/runner-routing/baseline.tsv`.
+  - The route summary from `route-report.md`: cost, first-pass rate and fallback rate by executor. Say which routing rules the evidence supports and which it does not.
+  - The limits: determinism does not prove meaning; fixture coverage is partial; the secret scan is best-effort; the enforcement gaps from `enforcement.tsv`; PowerShell coverage as the tests ran it.
+  - The backlog with the evidence for each item: language and toolchain packs (phase 12), the AI-generated control lifecycle (phase 13), fleet operations and upgrade waves (phase 16), the optional `gpx_mcp` adoption, and any open library defects.
+  - The archive step: after the merge, move this plan and `runner-routing` to `plans/archive/` in a separate pull request.
+
+## Results
+
+(fill in)
+
+## Do not change
+
+- Files outside `touches`. The `gate`. Any repository other than this one, unless this is an operator step.
+
+## Record
+
+Set `status: done`. Fill `evidence` with the gate command, the result and the date.
+If you cannot finish, write "Resume notes" below. Keep the status `in_progress`.
+
+## Resume notes
+
+(none)
