@@ -1,0 +1,3 @@
+# Enforcement state for each repository. The operator fills it in step 33.
+# state: required (protection on, probes blocked) or documented-gap (reason in notes).
+repo	state	required_check	probes	date	notes

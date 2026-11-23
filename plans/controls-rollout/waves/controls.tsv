@@ -1,0 +1,2 @@
+repo	base	child_plan	mode	source	run
+deterministic-controls	main	bootstrap	seed	seeds/controls	yes

@@ -1,0 +1,2 @@
+repo	base	child_plan	mode	source	run
+repo-template	main	adopt-controls	seed	seeds/template	yes
