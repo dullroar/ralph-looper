@@ -10,7 +10,7 @@
 # NOTE: allow-lists are guard rails, not a sandbox. Real protection is no credentials in the
 # environment, no pushable remote, and a pre-push hook.
 
-CLAUDE_ALLOW='Read,Edit,Write,Glob,Grep,Bash(git:*),Bash(python3:*),Bash(python:*),Bash(bash:*),Bash(pwsh:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(find:*),Bash(sed:*),Bash(sort:*),Bash(diff:*),Bash(cp:*),Bash(mv:*),Bash(mkdir:*),Bash(touch:*),Bash(chmod:*),Bash(date:*),Bash(echo:*),Bash(printf:*),Bash(test:*),Bash(pwd:*),Bash(which:*),Bash(rm:*),Bash(cd:*),Bash(env:*),Bash(true:*),Bash(sleep:*),Bash(time:*)'
+CLAUDE_ALLOW='Read,Edit,Write,Glob,Grep,Bash(git:*),Bash(python3:*),Bash(python:*),Bash(bash:*),Bash(pwsh:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(find:*),Bash(sed:*),Bash(sort:*),Bash(diff:*),Bash(cp:*),Bash(mv:*),Bash(mkdir:*),Bash(touch:*),Bash(chmod:*),Bash(date:*),Bash(echo:*),Bash(printf:*),Bash(test:*),Bash(pwd:*),Bash(which:*),Bash(rm:*),Bash(cd:*),Bash(env:*),Bash(true:*),Bash(sleep:*),Bash(time:*),Bash(npm:*),Bash(npx:*),Bash(node:*)'
 CLAUDE_DENY='"Bash(git push:*)" "Bash(gh:*)" "Bash(curl:*)" "Bash(wget:*)" "Bash(ssh:*)"'
 
 claude_flags() {
