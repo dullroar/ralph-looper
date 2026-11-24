@@ -1,6 +1,6 @@
 ---
 id: 09-runner-adopts-controls
-status: pending
+status: done
 depends_on: [08-record-pin]
 touches:
   - scripts/check_context.py
@@ -13,9 +13,9 @@ touches:
   - plans/controls-rollout/steps/09-runner-adopts-controls.md
 lane: none
 gate: python3 scripts/check_context.py && python3 scripts/build_indexes.py --check && bash tests/run.sh && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T01:39:38Z"
+evidence: gate passed 2026-11-24 (driver-verified)
 ---
 
 # Wire ralph-looper to the pinned library
