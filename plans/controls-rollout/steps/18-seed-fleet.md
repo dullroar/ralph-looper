@@ -7,9 +7,9 @@ touches:
   - plans/controls-rollout/steps/18-seed-fleet.md
 lane: none
 gate: python3 lib/fanout.py ready --plan-dir plans/controls-rollout --wave fleet && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "gate (fanout.py ready --wave fleet, check_context.py, git diff --check): 8/8 targets ready, each seed passes the target plan checker, context checks ok, 2026-11-23 (UTC)"
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T02:44:53Z"
+evidence: gate passed 2026-11-24 (driver-verified)
 ---
 
 # Write the seed for the `fleet` wave
