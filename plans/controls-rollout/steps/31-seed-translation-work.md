@@ -7,9 +7,9 @@ touches:
   - plans/controls-rollout/steps/31-seed-translation-work.md
 lane: none
 gate: python3 lib/fanout.py ready --plan-dir plans/controls-rollout --wave translation-work && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "gate passed 2026-11-24: fanout.py ready (seed v4-es-1 on loop/es-v4, 28 pending steps), check_context.py ok, git diff --check ok"
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T03:39:10Z"
+evidence: gate passed 2026-11-24 (driver-verified)
 ---
 
 # Write the seed for the `translation-work` wave
