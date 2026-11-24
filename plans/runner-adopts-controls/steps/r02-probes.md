@@ -1,13 +1,15 @@
 ---
 id: r02-probes
-status: pending
+status: done
 depends_on: [r01-adopt]
 touches:
   - docs/controls-adoption.md
   - plans/runner-adopts-controls/steps/r02-probes.md
 lane: none
 gate: python3 scripts/check_context.py && git check-ignore -q .probe/x && grep -q '^## Probes' docs/controls-adoption.md && for id in markdown.local-links context.index-freshness plans.schema security.secrets repo.forbidden-artifacts; do grep -q "$id" docs/controls-adoption.md || exit 1; done && git diff --check
-evidence: ""
+evidence: gate passed 2026-11-24 (driver-verified)
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T16:17:24Z"
 ---
 
 # Probe the controls

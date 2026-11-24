@@ -1,0 +1,3 @@
+schema_version = 1
+profile = "ci"
+enabled = ["context.index-freshness", "markdown.document-ids", "markdown.front-matter", "markdown.local-links", "markdown.required-headings", "plans.graph", "plans.schema", "repo.forbidden-artifacts", "security.personal-data", "security.secrets", "translation.chunks", "translation.fences", "translation.glossary", "translation.links", "translation.structure", "translation.untranslated-heuristic"]

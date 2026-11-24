@@ -5,10 +5,28 @@ on:
 permissions:
   contents: read
 jobs:
+  controls:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - name: Run the deterministic controls
+        run: python3 scripts/check_context.py
+      - name: Secret guard on all tracked files
+        run: python3 scripts/secret_guard.py --tracked
+      - name: Secret guard on every commit of the pull request
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/secret_guard.py --range "$BASE_SHA..$HEAD_SHA"
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
       - name: Check indexes, plans, links and secrets
@@ -21,3 +39,21 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: python3 scripts/secret_guard.py --range "$BASE_SHA..$HEAD_SHA"
+  runner-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - name: End-to-end test with a fake agent
+        run: bash tests/run.sh
+      - name: Test fanout
+        run: python3 tests/test_fanout.py
+      - name: Test report
+        run: python3 tests/test_report.py
+      - name: Test check_records
+        run: python3 tests/test_check_records.py
+      - name: Test secret_guard
+        run: python3 tests/test_secret_guard.py

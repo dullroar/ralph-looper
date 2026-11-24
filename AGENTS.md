@@ -26,7 +26,8 @@ Files:
 4. **Do not push, publish or force-push** without authorization from the user.
 5. Secrets are never tracked, committed or pushed. The guard runs in the pre-commit and pre-push hooks, in the driver before each merge, and in CI. Do not add an exception to make a step pass. An exception needs the owner's review.
 6. The driver checks the gate and `touches` from the plan branch. Do not edit them in a step.
-7. User instructions come first. If sources conflict, use this order: user, this file, the named plan, `docs/`, `memory/`, code and tests, old notes.
+7. CI runs the controls in all cases. Do not change the controls, the pin, `controls.toml` or the workflows to make an unrelated task pass.
+8. User instructions come first. If sources conflict, use this order: user, this file, the named plan, `docs/`, `memory/`, code and tests, old notes.
 
 ## Directory structure (from repo-template)
 
