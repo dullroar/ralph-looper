@@ -7,9 +7,9 @@ touches:
   - plans/controls-rollout/steps/24-review-translation-adopt.md
 lane: none
 gate: python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave translation-adopt && for h in '## Keep' '## Change' '## Library defects' '## Route evidence'; do grep -qx "$h" plans/controls-rollout/lessons/translation-adopt.md || exit 1; done && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "gate passed 2026-11-23: fanout.py verify (1/1 targets pass), four lesson headings, check_context.py, git diff --check"
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T02:55:20Z"
+evidence: gate passed 2026-11-24 (driver-verified)
 ---
 
 # Review the `translation-adopt` wave and write its lessons
