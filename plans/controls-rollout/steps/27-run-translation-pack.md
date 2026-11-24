@@ -1,15 +1,15 @@
 ---
 id: 27-run-translation-pack
-status: pending
+status: done
 depends_on: [26-seed-translation-pack]
 touches:
   - plans/controls-rollout/steps/27-run-translation-pack.md
 lane: none
 agent: operator
 gate: python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave translation-pack
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: operator
+claimed_at: "2026-11-24T03:23:38Z"
+evidence: gate passed 2026-11-24 (operator step, driver-verified)
 ---
 
 # Operator: run the `translation-pack` wave
