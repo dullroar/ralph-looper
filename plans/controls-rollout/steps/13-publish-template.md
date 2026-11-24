@@ -1,15 +1,15 @@
 ---
 id: 13-publish-template
-status: pending
+status: done
 depends_on: [12-review-template]
 touches:
   - plans/controls-rollout/steps/13-publish-template.md
 lane: none
 agent: operator
 gate: python3 lib/fanout.py published --plan-dir plans/controls-rollout --wave template
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: operator
+claimed_at: "2026-11-24T01:57:21Z"
+evidence: gate passed 2026-11-24 (operator step, driver-verified)
 ---
 
 # Operator: merge the `template` results
