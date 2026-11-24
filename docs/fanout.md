@@ -131,6 +131,20 @@ The tool prints a total line. It exits nonzero if one target fails.
 
 The tool runs `git fetch origin` in each target. This is the only change: it updates remote-tracking refs. Then the tool checks that the final commit (the seed commit for `run=no`) is an ancestor of `origin/<base>`. It exits nonzero if one is not.
 
+## Operator amendments
+
+Sometimes the operator must change a child plan while it runs: a seed defect, a new library pin, or a gate that cannot pass. Commit the change on `plan/<child_plan>` (in the child `_plan` worktree, while the child driver is stopped). The commit may change only files under `plans/<child_plan>/`. Then record it:
+
+```bash
+python3 lib/fanout.py amend --plan-dir DIR --wave NAME --repo REPO --commit SHA --reason "one line: why"
+```
+
+- `verify` accepts a changed gate only when a recorded amendment commit made that change. It prints every amendment with its reason.
+- A gate change in any other commit (for example by an agent) still fails `verify`, also when a later amendment exists. An amendment cannot make an earlier, unrecorded change legal.
+- Amendments must form a line: each one descends from the seed or from the previous amendment, and all are on the plan branch.
+- The command takes the wave lock. Run it when no `run` of that wave is active.
+- Review each amendment like code. The reason is the audit trail in every `verify` report.
+
 ## Normal procedure
 
 1. Write the seeds and `waves/<wave>.tsv` in the parent plan. Commit them.
@@ -152,3 +166,4 @@ The tool runs `git fetch origin` in each target. This is the only change: it upd
 | "seed differs from the provisioned seed" | Restore the seed, or start again as above. |
 | "no recorded provenance" | A branch, worktree or runtime directory exists that the tool did not create. Find out where it came from. Do not delete it before you know. |
 | `verify` fails for a done target | The plan branch, a gate or a gate log changed after the run. Find out why before you merge. |
+| "gate text differs from the seed and from every recorded operator amendment" | If the change is an operator change, record it with `amend` (see above). If not, find out who changed the gate before you merge. |
