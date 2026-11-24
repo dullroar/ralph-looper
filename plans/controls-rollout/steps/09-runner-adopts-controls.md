@@ -48,4 +48,11 @@ If you cannot finish, write "Resume notes" below. Keep the status `in_progress`.
 
 ## Resume notes
 
-(none)
+Blocked. No file outside this step file is changed.
+
+- The pin is in `plans/controls-rollout/pins.tsv`: tag `v0.1.0`, commit `651543baf8d308ec4e0ca0e69fb12a52fb0d6848`.
+- The step needs the network to install the library from `https://github.com/dullroar/deterministic-controls` at that commit (`pip install git+...@<commit>`). The agent sandbox denied this command (Bash "don't ask" mode). I made an empty virtual environment in the scratchpad only. I did not try to work around the denial.
+- The step also needs the shim cache build on this host. It needs the same network access. Record the first-run and cached-run times under "Results".
+- Remaining: items 1 to 6 of "Do". Start with `python3 -m deterministic_controls adopt plan --root .` in a temporary virtual environment, then `adopt apply`.
+- Notes for the next attempt: the existing `context` workflow has one job named `check`. The step text says to keep a job named `context`. The workflow `name` is `context`, so check how `adopt apply` names the jobs before you change it. The lessons file `lessons/controls.md` says to copy the shim and cache rule as written in the spec, and that the shim needs the network once for each pinned commit.
+- Unblock: allow `pip install` from GitHub and writes to `$XDG_CACHE_HOME/deterministic-controls/` for this step, or run the step as an operator.
