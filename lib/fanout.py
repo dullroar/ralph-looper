@@ -14,6 +14,9 @@ Commands (each takes --plan-dir DIR --wave NAME):
   amend      Record a reviewed operator commit on plan/<child_plan> (--repo, --commit, --reason).
              The commit may change only plans/<child_plan>/. verify then accepts the gates that
              the amendment changed, and prints every amendment. Any other gate change still fails.
+  followup   Record one reviewed operator commit on top of a completed run (--repo, --commit,
+             --reason). Its parent must be the final commit or the previous follow-up, and it may
+             not change plans/<child_plan>/. verify then accepts it as the new branch head.
 
 Wave manifest: DIR/waves/<wave>.tsv (UTF-8, header row, `#` comments) with the columns
 repo, base, child_plan, mode (seed|pinned), source, run (yes|no). See docs/fanout.md.
@@ -468,11 +471,26 @@ def check_amendments(repo, rec, plan_sha):
 
 
 def amendment_note(rec):
-    items = rec.get("amendments", [])
-    if not items:
-        return ""
-    return f" (operator amendments: {len(items)}: " + "; ".join(
-        f"{a['commit'][:12]} {a['reason']}" for a in items) + ")"
+    note = ""
+    for key, label in (("amendments", "operator amendments"), ("followups", "operator follow-ups")):
+        items = rec.get(key, [])
+        if items:
+            note += f" ({label}: {len(items)}: " + "; ".join(f"{a['commit'][:12]} {a['reason']}" for a in items) + ")"
+    return note
+
+
+def expected_head(repo, rec):
+    """Return the commit that plan/<child> must point to: the final commit, or the last recorded follow-up.
+
+    Each follow-up is one commit whose parent is the final commit or the previous follow-up.
+    """
+    head = rec["final_sha"]
+    for item in rec.get("followups", []):
+        commit = item["commit"]
+        parent = git_text(repo, "rev-parse", "--verify", "--quiet", f"{commit}^", allow_fail=True)
+        require(parent == head, f"{rec['repo']}: follow-up {commit[:12]} is not a single commit on top of {head[:12]}")
+        head = commit
+    return head
 
 
 def check_result(wave, row, rec, plan_sha):
@@ -513,8 +531,9 @@ def verify_target(wave, row):
     require(rec.get("status") == "done" and rec.get("exit_code") == 0 and rec.get("final_sha"),
             f"{name}: no recorded completed run (status {rec.get('status')})")
     plan_sha = ref(repo, f"refs/heads/plan/{child}")
-    require(plan_sha == rec["final_sha"], f"{name}: plan/{child} differs from the recorded plan SHA")
-    check_result(wave, row, rec, plan_sha)
+    require(plan_sha == expected_head(repo, rec),
+            f"{name}: plan/{child} differs from the recorded plan SHA and its recorded follow-ups")
+    check_result(wave, row, rec, rec["final_sha"])
     require(gate_digest(rec["runtime"]) == rec.get("gate_digest"), f"{name}: gate logs have changed")
     return f"done {plan_sha}{amendment_note(rec)}"
 
@@ -709,6 +728,41 @@ def cmd_amend(wave, args):
     return 0
 
 
+def cmd_followup(wave, args):
+    """Record one reviewed operator commit on top of a completed run. It may not change plans/<child_plan>/."""
+    rows = [row for row in wave.rows if row["repo"] == args.repo]
+    require(rows, f"{args.repo}: not in the wave manifest")
+    row = rows[0]
+    reason = (args.reason or "").strip()
+    require(reason and "\n" not in reason and len(reason) <= 300, "--reason must be one line of 1 to 300 characters")
+    with locked(wave.state / "wave.lock"):
+        rec = wave.record(row)
+        require(rec and rec.get("status") == "done" and rec.get("final_sha"),
+                f"{row['repo']}: a follow-up needs a completed run")
+        repo = Path(rec["path"])
+        commit = git_text(repo, "rev-parse", "--verify", "--quiet", f"{args.commit}^{{commit}}", allow_fail=True)
+        require(commit, f"{row['repo']}: unknown commit {args.commit}")
+        followups = rec.get("followups", [])
+        if any(f["commit"] == commit for f in followups):
+            print(f"{row['repo']}: follow-up {commit[:12]} is already recorded")
+            return 0
+        head = expected_head(repo, rec)
+        parents = git_text(repo, "rev-list", "--parents", "-n", "1", commit).split()[1:]
+        require(parents == [head], f"{row['repo']}: {commit[:12]} must be one commit whose parent is {head[:12]}")
+        plan = ref(repo, f"refs/heads/plan/{row['child_plan']}")
+        require(plan and is_ancestor(repo, commit, plan), f"{row['repo']}: {commit[:12]} is not on plan/{row['child_plan']}")
+        files = [f for f in git_text(repo, "diff", "--name-only", head, commit).splitlines() if f]
+        prefix = f"plans/{row['child_plan']}/"
+        inside = [f for f in files if f.startswith(prefix)]
+        require(files and not inside, f"{row['repo']}: a follow-up may not change {prefix}: {inside or 'no files'}")
+        followups.append({"commit": commit, "reason": reason, "files": files,
+                          "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
+        rec["followups"] = followups
+        wave.save(rec)
+    print(f"{row['repo']}: recorded follow-up {commit[:12]}: {reason}")
+    return 0
+
+
 COMMANDS = {
     "ready": (cmd_ready, "read only: check each target before provisioning"),
     "provision": (cmd_provision, "create rollout/<child_plan> worktrees and commit the seeds"),
@@ -717,6 +771,7 @@ COMMANDS = {
     "verify": (cmd_verify, "read only: check the child plan branches with Git plumbing"),
     "published": (cmd_published, "fetch, then check that each result is on origin/<base>"),
     "amend": (cmd_amend, "record a reviewed operator commit on plan/<child_plan> (plan files only)"),
+    "followup": (cmd_followup, "record a reviewed operator commit after a completed run (no plan files)"),
 }
 
 
@@ -730,7 +785,7 @@ def main(argv=None):
         cmd.add_argument("--wave", required=True, help="the wave name (waves/<wave>.tsv)")
         if name in ("ready", "run"):
             cmd.add_argument("--runner", help="driver path (default: the driver next to this tool)")
-        if name == "amend":
+        if name in ("amend", "followup"):
             cmd.add_argument("--repo", required=True, help="the target repository (a manifest row)")
             cmd.add_argument("--commit", required=True, help="the operator commit on plan/<child_plan>")
             cmd.add_argument("--reason", required=True, help="one line: why the operator changed the plan")

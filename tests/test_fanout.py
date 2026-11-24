@@ -258,6 +258,72 @@ class FanoutTest(unittest.TestCase):
         self.assertEqual(code, 1, out)
         self.assertIn("step 01-a gate text differs", out)
 
+    def test_followup_accepts_one_recorded_operator_commit_after_the_run(self):
+        self.wave([("alpha", "main", CHILD, "seed", f"seeds/{CHILD}", "yes")])
+        code, out = self.fanout("run")
+        self.assertEqual(code, 0, out)
+        repo = self.repos / "alpha"
+        final = self.record("alpha")["final_sha"]
+        plan_tree = self.work / "alpha" / CHILD / "worktrees" / "_plan"
+
+        def commit(message, path, text):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text)
+            git(plan_tree, "add", "-A")
+            git(plan_tree, "commit", "-q", "-m", message)
+            return git(repo, "rev-parse", f"refs/heads/plan/{CHILD}")
+
+        # An operator fix after the run: verify fails until it is recorded.
+        fix = commit("operator: product fix", plan_tree / "product.txt", "fixed\n")
+        code, out = self.fanout("verify")
+        self.assertEqual(code, 1, out)
+        self.assertIn("differs from the recorded plan SHA", out)
+
+        # Refused: no reason, a commit that is not on top of the final commit.
+        code, out = self.fanout("followup", "--repo", "alpha", "--commit", fix, "--reason", " ")
+        self.assertEqual(code, 1, out)
+        code, out = self.fanout("followup", "--repo", "alpha", "--commit", final, "--reason", "x")
+        self.assertEqual(code, 1, out)
+
+        # Recorded: verify passes and prints it. A repeat is a no-op.
+        code, out = self.fanout("followup", "--repo", "alpha", "--commit", fix, "--reason", "review fix")
+        self.assertEqual(code, 0, out)
+        code, out = self.fanout("followup", "--repo", "alpha", "--commit", fix, "--reason", "again")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(len(self.record("alpha")["followups"]), 1)
+        code, out = self.fanout("verify")
+        self.assertEqual(code, 0, out)
+        self.assertIn("operator follow-ups: 1", out)
+        self.assertIn("review fix", out)
+        self.assertEqual(self.record("alpha")["final_sha"], final)
+
+        # A follow-up may not change the child plan (gates, steps, evidence).
+        step_file = plan_tree / "plans" / CHILD / "steps" / "02-b.md"
+        weak = commit("weaken gate", step_file, step_file.read_text().replace("gate: test -f 02-b.out", "gate: true"))
+        code, out = self.fanout("followup", "--repo", "alpha", "--commit", weak, "--reason", "x")
+        self.assertEqual(code, 1, out)
+        self.assertIn("may not change", out)
+        code, out = self.fanout("verify")
+        self.assertEqual(code, 1, out)
+
+    def test_followup_cannot_skip_an_unrecorded_commit(self):
+        # Two commits after the run: recording only the second one must fail.
+        self.wave([("alpha", "main", CHILD, "seed", f"seeds/{CHILD}", "yes")])
+        code, out = self.fanout("run")
+        self.assertEqual(code, 0, out)
+        repo = self.repos / "alpha"
+        plan_tree = self.work / "alpha" / CHILD / "worktrees" / "_plan"
+        (plan_tree / "a.txt").write_text("a\n")
+        git(plan_tree, "add", "-A")
+        git(plan_tree, "commit", "-q", "-m", "unrecorded")
+        (plan_tree / "b.txt").write_text("b\n")
+        git(plan_tree, "add", "-A")
+        git(plan_tree, "commit", "-q", "-m", "second")
+        second = git(repo, "rev-parse", f"refs/heads/plan/{CHILD}")
+        code, out = self.fanout("followup", "--repo", "alpha", "--commit", second, "--reason", "x")
+        self.assertEqual(code, 1, out)
+        self.assertIn("must be one commit", out)
+
     def test_failed_gate_leaves_target_incomplete(self):
         self.seed_wave()
         code, out = self.fanout("run", FANOUT_FAIL_REPO="beta")
