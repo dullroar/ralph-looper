@@ -7,9 +7,9 @@ touches:
   - plans/controls-rollout/steps/36-final-audit.md
 lane: none
 gate: for w in controls template pilot fleet translation-adopt translation-pack translation-work; do python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave $w || exit 1; done && python3 scripts/check_records.py plans/controls-rollout/enforcement.tsv --min-rows 14 && test -s plans/controls-rollout/final-audit.md && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "Gate passed on 2026-11-24: fanout.py verify for 7 waves (fleet 8/8), check_records enforcement.tsv --min-rows 14, final-audit.md not empty, check_context.py, git diff --check. Run as separate commands."
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T16:08:30Z"
+evidence: gate passed 2026-11-24 (driver-verified)
 ---
 
 # Audit the program and write the backlog
