@@ -11,6 +11,9 @@ Commands (each takes --plan-dir DIR --wave NAME):
   status     Read only. Print the recorded state of each target.
   verify     Read only. Check the child plan branches with Git plumbing.
   published  Fetch each target remote, then check that the result is on origin/<base>.
+  amend      Record a reviewed operator commit on plan/<child_plan> (--repo, --commit, --reason).
+             The commit may change only plans/<child_plan>/. verify then accepts the gates that
+             the amendment changed, and prints every amendment. Any other gate change still fails.
 
 Wave manifest: DIR/waves/<wave>.tsv (UTF-8, header row, `#` comments) with the columns
 repo, base, child_plan, mode (seed|pinned), source, run (yes|no). See docs/fanout.md.
@@ -437,12 +440,48 @@ def gate_digest(runtime):
     return h.hexdigest()
 
 
+def amended_gate(repo, rec, path, seed_gate):
+    """Return the gate a step must have: the seed gate, as changed by recorded operator amendments.
+
+    An amendment changes the expected gate only for the steps whose gate it changed itself. Any other
+    later change of a gate (for example by an agent) still fails verify.
+    """
+    gate = seed_gate
+    for amendment in rec.get("amendments", []):
+        commit = amendment["commit"]
+        before = parse_front_matter((blob(repo, f"{commit}^", path) or b"").decode()).get("gate")
+        after = parse_front_matter((blob(repo, commit, path) or b"").decode()).get("gate")
+        if after != before:
+            gate = after
+    return gate
+
+
+def check_amendments(repo, rec, plan_sha):
+    name = rec["repo"]
+    previous = rec["seed_commit"]
+    for amendment in rec.get("amendments", []):
+        commit = amendment["commit"]
+        require(is_ancestor(repo, previous, commit) and commit != previous,
+                f"{name}: amendment {commit[:12]} does not follow the seed or the previous amendment")
+        require(is_ancestor(repo, commit, plan_sha), f"{name}: amendment {commit[:12]} is not on the plan branch")
+        previous = commit
+
+
+def amendment_note(rec):
+    items = rec.get("amendments", [])
+    if not items:
+        return ""
+    return f" (operator amendments: {len(items)}: " + "; ".join(
+        f"{a['commit'][:12]} {a['reason']}" for a in items) + ")"
+
+
 def check_result(wave, row, rec, plan_sha):
     """Check a child plan commit with Git plumbing. Raise FanoutError if it is not a valid result."""
     name, child = row["repo"], row["child_plan"]
     repo = Path(rec["path"])
     seed = rec["seed_commit"]
     require(plan_sha and is_ancestor(repo, seed, plan_sha), f"{name}: plan/{child} does not descend from the seed")
+    check_amendments(repo, rec, plan_sha)
     prefix = f"plans/{child}/steps/"
     original = {p for p in ls_tree(repo, seed, prefix) if p.endswith(".md")}
     actual = {p for p in ls_tree(repo, plan_sha, prefix) if p.endswith(".md")}
@@ -455,8 +494,9 @@ def check_result(wave, row, rec, plan_sha):
         new = parse_front_matter((blob(repo, plan_sha, path) or b"").decode())
         require(new.get("status") == "done", f"{name}: step {step} is not done")
         require(EVIDENCE.match(str(new.get("evidence", ""))), f"{name}: step {step} has no driver evidence")
-        require(old.get("gate") and new.get("gate") == old.get("gate"),
-                f"{name}: step {step} gate text differs from the seed")
+        expected = amended_gate(repo, rec, path, old.get("gate"))
+        require(old.get("gate") and new.get("gate") == expected,
+                f"{name}: step {step} gate text differs from the seed and from every recorded operator amendment")
 
 
 def verify_target(wave, row):
@@ -476,7 +516,7 @@ def verify_target(wave, row):
     require(plan_sha == rec["final_sha"], f"{name}: plan/{child} differs from the recorded plan SHA")
     check_result(wave, row, rec, plan_sha)
     require(gate_digest(rec["runtime"]) == rec.get("gate_digest"), f"{name}: gate logs have changed")
-    return f"done {plan_sha}"
+    return f"done {plan_sha}{amendment_note(rec)}"
 
 
 # ---- run ----
@@ -635,6 +675,40 @@ def cmd_published(wave, args):
     return int(errors != 0)
 
 
+def cmd_amend(wave, args):
+    """Record a reviewed operator commit on plan/<child_plan>. Only plan files may change in it."""
+    rows = [row for row in wave.rows if row["repo"] == args.repo]
+    require(rows, f"{args.repo}: not in the wave manifest")
+    row = rows[0]
+    reason = (args.reason or "").strip()
+    require(reason and "\n" not in reason and len(reason) <= 300, "--reason must be one line of 1 to 300 characters")
+    with locked(wave.state / "wave.lock"):
+        rec = wave.record(row)
+        require(rec and rec.get("seed_commit"), f"{row['repo']}: not provisioned")
+        repo = Path(rec["path"])
+        commit = git_text(repo, "rev-parse", "--verify", "--quiet", f"{args.commit}^{{commit}}", allow_fail=True)
+        require(commit, f"{row['repo']}: unknown commit {args.commit}")
+        amendments = rec.get("amendments", [])
+        if any(a["commit"] == commit for a in amendments):
+            print(f"{row['repo']}: amendment {commit[:12]} is already recorded")
+            return 0
+        previous = amendments[-1]["commit"] if amendments else rec["seed_commit"]
+        require(commit != previous and is_ancestor(repo, previous, commit),
+                f"{row['repo']}: {commit[:12]} does not follow the seed or the previous amendment")
+        plan = ref(repo, f"refs/heads/plan/{row['child_plan']}")
+        require(plan and is_ancestor(repo, commit, plan), f"{row['repo']}: {commit[:12]} is not on plan/{row['child_plan']}")
+        files = [f for f in git_text(repo, "diff", "--name-only", f"{commit}^", commit).splitlines() if f]
+        prefix = f"plans/{row['child_plan']}/"
+        outside = [f for f in files if not f.startswith(prefix)]
+        require(files and not outside, f"{row['repo']}: an amendment may change only {prefix}: {outside or 'no files'}")
+        amendments.append({"commit": commit, "reason": reason, "files": files,
+                           "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
+        rec["amendments"] = amendments
+        wave.save(rec)
+    print(f"{row['repo']}: recorded amendment {commit[:12]}: {reason}")
+    return 0
+
+
 COMMANDS = {
     "ready": (cmd_ready, "read only: check each target before provisioning"),
     "provision": (cmd_provision, "create rollout/<child_plan> worktrees and commit the seeds"),
@@ -642,6 +716,7 @@ COMMANDS = {
     "status": (cmd_status, "read only: print the recorded state of each target"),
     "verify": (cmd_verify, "read only: check the child plan branches with Git plumbing"),
     "published": (cmd_published, "fetch, then check that each result is on origin/<base>"),
+    "amend": (cmd_amend, "record a reviewed operator commit on plan/<child_plan> (plan files only)"),
 }
 
 
@@ -655,6 +730,10 @@ def main(argv=None):
         cmd.add_argument("--wave", required=True, help="the wave name (waves/<wave>.tsv)")
         if name in ("ready", "run"):
             cmd.add_argument("--runner", help="driver path (default: the driver next to this tool)")
+        if name == "amend":
+            cmd.add_argument("--repo", required=True, help="the target repository (a manifest row)")
+            cmd.add_argument("--commit", required=True, help="the operator commit on plan/<child_plan>")
+            cmd.add_argument("--reason", required=True, help="one line: why the operator changed the plan")
         if name == "run":
             cmd.add_argument("--agent", required=True, choices=AGENTS)
             cmd.add_argument("--jobs", type=int, default=1, help="targets to run at the same time")
