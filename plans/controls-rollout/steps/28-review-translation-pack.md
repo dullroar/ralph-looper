@@ -7,9 +7,9 @@ touches:
   - plans/controls-rollout/steps/28-review-translation-pack.md
 lane: none
 gate: python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave translation-pack && for h in '## Keep' '## Change' '## Library defects' '## Route evidence'; do grep -qx "$h" plans/controls-rollout/lessons/translation-pack.md || exit 1; done && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "gate command of this step passed 2026-11-23 (verify 1/1, four headings, check_context, diff --check)"
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T03:25:32Z"
+evidence: gate passed 2026-11-24 (driver-verified)
 ---
 
 # Review the `translation-pack` wave and write its lessons
