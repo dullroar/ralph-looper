@@ -7,7 +7,9 @@ touches:
   - plans/runner-adopts-controls/steps/r02-probes.md
 lane: none
 gate: python3 scripts/check_context.py && git check-ignore -q .probe/x && grep -q '^## Probes' docs/controls-adoption.md && for id in markdown.local-links context.index-freshness plans.schema security.secrets repo.forbidden-artifacts; do grep -q "$id" docs/controls-adoption.md || exit 1; done && git diff --check
-evidence: "Five planted defects each failed in .probe/copy with exit 1 and the expected rule ID; the clean copy passed. The shim also exited 1 on the step without a gate. Record: docs/controls-adoption.md, section Probes."
+evidence: gate passed 2026-11-24 (driver-verified)
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T16:17:24Z"
 ---
 
 # Probe the controls
