@@ -1,0 +1,5 @@
+# Run settings for the translation-pack plan. Claude Code reports notional cost on a subscription.
+jobs: 4
+max_step_usd: 10
+step_timeout_minutes: 90
+gate_timeout_minutes: 20
