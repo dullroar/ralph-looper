@@ -19,7 +19,6 @@ Read the list. Open only the plans whose "Read me when" line matches your task.
 
 <!-- BEGIN GENERATED INDEX -->
 
-* [runner-adopts-controls/plan.md](./runner-adopts-controls/plan.md)
-  Read me when: you add or change the deterministic-controls adoption of ralph-looper itself (pin, controls.toml, the controls and runner-tests jobs), or archive the controls-rollout plans.
+<!-- Nothing to list yet. -->
 
 <!-- END GENERATED INDEX -->
