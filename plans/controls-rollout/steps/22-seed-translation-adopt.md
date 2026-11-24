@@ -7,9 +7,9 @@ touches:
   - plans/controls-rollout/steps/22-seed-translation-adopt.md
 lane: none
 gate: python3 lib/fanout.py ready --plan-dir plans/controls-rollout --wave translation-adopt && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "Gate (fanout.py ready --wave translation-adopt && check_context.py && git diff --check) passed on 2026-11-23. Target is ready: seed adopt-ralph on loop/es-v4, {pending: 9}."
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T02:05:43Z"
+evidence: gate passed 2026-11-24 (driver-verified)
 ---
 
 # Write the seed for the `translation-adopt` wave
