@@ -7,9 +7,9 @@ touches:
   - plans/controls-rollout/steps/10-seed-template.md
 lane: none
 gate: python3 lib/fanout.py ready --plan-dir plans/controls-rollout --wave template && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "gate (fanout.py ready --wave template && check_context.py && git diff --check): repo-template ready, seed adopt-controls, 6 pending steps; all checks ok; 2026-11-24 UTC"
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T01:41:52Z"
+evidence: gate passed 2026-11-24 (driver-verified)
 ---
 
 # Write the seed for the `template` wave
