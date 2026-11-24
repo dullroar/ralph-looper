@@ -7,9 +7,9 @@ touches:
   - plans/controls-rollout/steps/20-review-fleet.md
 lane: none
 gate: python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave fleet && for h in '## Keep' '## Change' '## Library defects' '## Route evidence'; do grep -qx "$h" plans/controls-rollout/lessons/fleet.md || exit 1; done && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "2026-11-24 UTC: fanout.py verify --wave fleet gave 8/8 targets pass; lessons/fleet.md has the four headings; check_context.py ok; git diff --check clean."
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T15:18:45Z"
+evidence: gate passed 2026-11-24 (driver-verified)
 ---
 
 # Review the `fleet` wave and write its lessons
