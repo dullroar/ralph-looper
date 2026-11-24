@@ -30,6 +30,7 @@ The executor is a strong cloud agent. Write the goal, the limits, the facts it c
 ## Limits for every child
 
 - Keep existing entry points, tests, Docker gates, CI job names and documented commands.
+- **No installs in agent steps.** An agent step never creates a virtual environment, runs `pip install` or uses the network. Agent sessions refuse it. The operator puts a checkout of the pinned library release on `PYTHONPATH` for every child (`fanout.py run --child-env PYTHONPATH`), so steps run `python3 -m deterministic_controls ...` directly. Gates may build the shim's own cache environment, because gates run in the driver.
 - Never push, publish, change a remote or a GitHub setting. Never run `ralph-pusher`.
 - Never put secrets in a CI job that runs pull-request code. Use `permissions: contents: read`. Pin actions to full commit SHAs.
 - Keep runtime output outside the repository.
