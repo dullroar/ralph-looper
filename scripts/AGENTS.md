@@ -23,6 +23,8 @@ Read the list. Run only the scripts whose "Run me when" line matches your task.
   Run me when: I created or changed a plan or a step, and before a plan loop starts.
 * [check_records.py](./check_records.py)
   Run me when: a gate must check recorded results (decisions, pins, receipts, baselines) in a TSV file.
+* [controls-requirements.txt](./controls-requirements.txt)
+  Run me when: I install or upgrade the pinned deterministic-controls library (the check_context.py shim reads this pin).
 * [ctx_common.py](./ctx_common.py)
   Run me when: never directly. Other scripts in this folder import it.
 * [install_hooks.sh](./install_hooks.sh)
