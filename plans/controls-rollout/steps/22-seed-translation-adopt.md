@@ -1,6 +1,6 @@
 ---
 id: 22-seed-translation-adopt
-status: in_progress
+status: done
 depends_on: [09-runner-adopts-controls, 13-publish-template]
 touches:
   - plans/controls-rollout/seeds/translation-adopt/**
@@ -9,7 +9,7 @@ lane: none
 gate: python3 lib/fanout.py ready --plan-dir plans/controls-rollout --wave translation-adopt && python3 scripts/check_context.py && git diff --check
 claimed_by: ""
 claimed_at: ""
-evidence: ""
+evidence: "Gate (fanout.py ready --wave translation-adopt && check_context.py && git diff --check) passed on 2026-11-23. Target is ready: seed adopt-ralph on loop/es-v4, {pending: 9}."
 ---
 
 # Write the seed for the `translation-adopt` wave
