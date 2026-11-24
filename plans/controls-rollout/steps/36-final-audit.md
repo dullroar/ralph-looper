@@ -1,6 +1,6 @@
 ---
 id: 36-final-audit
-status: blocked
+status: pending
 depends_on: [34-apply-enforcement, 35-route-report]
 touches:
   - plans/controls-rollout/final-audit.md
