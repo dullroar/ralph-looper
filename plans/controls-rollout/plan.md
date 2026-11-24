@@ -12,7 +12,7 @@ The source is the deterministic-controls implementation plan of 2026-11-23 (phas
 
 **Parent and children.** The driver works on one repository. Work in other repositories runs as child plans. A seed step in this plan writes a child plan under `seeds/<wave>/` from a [child spec](./child-specs/). An operator step provisions and runs the wave with `lib/fanout.py`. Its gate is `fanout.py verify`. A review step checks the results and writes `lessons/<wave>.md`. An operator step merges the child branches. Its gate is `fanout.py published`. The next seed step reads all lessons first.
 
-**Executors.** Each step names its executor in front matter. Seeds and reviews use a cloud agent (default `--agent`). Recording a pin and building the route report are `script` steps. Approvals, repository creation, dispatch, merges, releases and GitHub settings are `operator` steps. Child plans use `local` with a `fallback` for bounded ports and document moves, `script` for audits and imports, and cloud agents for design and review. The policy is in `docs/routing.md` (written by `runner-routing`).
+**Executors.** Each step names its executor in front matter. Seeds and reviews use a cloud agent (default `--agent`). Recording a pin and building the route report are `script` steps. Approvals, repository creation, dispatch, merges, releases and GitHub settings are `operator` steps. Child plans use `script` for audits and imports and a cloud agent for everything else (`tier: light` for small edits). The local model is not used after the bootstrap wave (owner decision 2026-11-23: too slow on this host). The policy is in `docs/routing.md` (written by `runner-routing`).
 
 **Incremental value.** Each wave gives the next wave something:
 
@@ -22,7 +22,7 @@ The source is the deterministic-controls implementation plan of 2026-11-23 (phas
 | Runner and template | Every new repository and every Ralph run gets pinned controls. The template carries the routing fields and the agent rules. |
 | Translation adoption | The highest-value project leaves its private loop. It gets the template, CI controls and a Batch API path. It runs in parallel with the pilot. |
 | Pilot (2 repositories) | Real compatibility defects found while the cost is small. A tested adoption recipe. |
-| Fleet (8 repositories) | Broad coverage with the tested recipe, mostly on `local` and `script` routes. |
+| Fleet (8 repositories) | Broad coverage with the tested recipe, on cloud-agent and `script` routes. |
 | Translation pack `v0.2.0` | Generic translation checks from the translation tools, available to all repositories. |
 | Enforcement | Required checks and bypass probes, only after the pilot showed stable behavior. |
 
@@ -156,7 +156,7 @@ flowchart TD
 
 ## Run it
 
-Use a Bash host with Git, Python 3.11 or later, Docker (with FUSE for the two filesystem repositories), `gh` signed in as the repository owner, and the agent CLIs. Install `local-coder-agent` on `PATH` if you want the `local` route. Without it, steps with `agent: local` use their `fallback`.
+Use a Bash host with Git, Python 3.11 or later, Docker (with FUSE for the two filesystem repositories), `gh` signed in as the repository owner, and the agent CLIs. The local model route is off for this program (`local_route` in `decisions.tsv`).
 
 Start after `runner-routing` is merged into `main`. Export these absolute paths. Keep them the same on every restart.
 
@@ -200,4 +200,4 @@ Back up the plan branch with `ralph-pusher` if you want. Merge `plan/controls-ro
 - **The platform cannot enforce a rule.** The translation repository is private. Branch protection on a private repository needs a paid GitHub plan. Step 33 records `documented-gap` with the reason. It does not claim enforcement that does not exist.
 - **The translation loop is paused at a checkpoint.** `loop/STOP` stays in place. The adoption does not resume the old loop and does not change translated content, PO files or locked code. Jim decides when `v4-es-1` starts.
 - **Batch output arrives late, twice or not at all.** Batch requests use stable `custom_id` values from segment ID and source hash. Import is idempotent. Unmatched or stale results are rejected.
-- **The local model is weak at a task.** Its steps have strong gates and a `fallback`. The route report shows where `local` worked. The fleet seed uses that evidence.
+- **The local model is too slow on this host.** The bootstrap wave measured it (three parallel steps, no edit in 70+ minutes). From then on, no step uses `agent: local` (`local_route` in `decisions.tsv`). The route report keeps the measurement.

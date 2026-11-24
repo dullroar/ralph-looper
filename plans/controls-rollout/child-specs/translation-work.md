@@ -9,7 +9,7 @@ Five lanes run in parallel. The old loop ran one task at a time. Here each lane 
 | Lane | Source | Steps | Executors |
 | --- | --- | --- | --- |
 | G: tooling | new | g01 | cloud agent |
-| J: Jury | phase 7 | j01 to j10, plus generated `fix-*` steps | script, operator (batch and outside jurors), cloud agent (adjudication), local or cloud (fixes) |
+| J: Jury | phase 7 | j01 to j10, plus generated `fix-*` steps | script, operator (batch and outside jurors), cloud agent (adjudication and fixes) |
 | H: humor | phase 7 item 5, checkpoint item 4 | h01, h02 | operator, script |
 | U: upstream | Part III, checkpoint items 1, 2, 5, 6 | u01 to u05 | operator, script, cloud agent |
 | C: cookbook | phase 9 | c01 to c05 | cloud agent, script, operator (batch) |
@@ -28,7 +28,7 @@ Five lanes run in parallel. The old loop ran one task at a time. Here each lane 
 | j05-ingest | script | `tools/jury_ingest.py` writes `review/report-<date>.md` with canary recall for each juror. | j03, j04 |
 | j06-adjudicate | cloud agent | Fresh context, a model different from the translator. Decide each finding: accepted, rejected, duplicate, `needs-human`, `needs-source-issue`. Flag playfulness, guarantees, the 40-rule, safety and the acronym for Jim. | j05 |
 | j07-human-decisions | operator | Jim decides the `needs-human` items. Gate: no undecided item. | j06 |
-| j08-fanout-fixes | script | `tools/fix_steps.py` writes `steps/fix-*.md`. Mechanical fixes get `agent: local` with a cloud fallback. Fixes that change meaning get a cloud agent. Each gate: `verify.py --fast --files <po> <md>`, anchors, and the oracle for code families. | j07, g01 |
+| j08-fanout-fixes | script | `tools/fix_steps.py` writes `steps/fix-*.md`. Mechanical fixes get a cloud agent with `tier: light`. Fixes that change meaning get a cloud agent. Each gate: `verify.py --fast --files <po> <md>`, anchors, and the oracle for code families. | j07, g01 |
 | j09-round-two | operator | After the fixes: delta packets for changed critical and major passages (script), a second round with new jurors (batch and outside). At most two rounds. | j08 and all `fix-*` |
 | j10-gate-7 | script | `tools/jury_gate.py` and `verify.py --release`. | j09, h02 |
 | h01-native-humor | operator | Native-speaker review of `translation/humor-register.jsonl`. | none |

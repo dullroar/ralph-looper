@@ -7,7 +7,7 @@ Wave `template`. Source phases: 5 and the plan-format part of 14. Every new repo
 | Step | Executor | Goal | Depends on |
 | --- | --- | --- | --- |
 | m01-shim | cloud agent | Adopt the pinned library with `adopt apply`. Keep `scripts/check_context.py` and `build_indexes.py` working. | none |
-| m02-agent-rules | local, fallback cloud | Agent rules for controls and routing. Plan template fields. | none |
+| m02-agent-rules | cloud agent | Agent rules for controls and routing. Plan template fields. | none |
 | m03-ci | cloud agent | Pinned, read-only CI job with a stable name. | m01 |
 | m04-smoke | cloud agent | Fresh-copy and old-copy smoke tests with a known-bad plan. | m01, m02, m03 |
 | m05-verify | cloud agent, light | Clean-clone verification and receipt. | m04 |

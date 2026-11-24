@@ -19,12 +19,12 @@ Wave `translation-adopt`. Base branch: `translation_branch` in [decisions.tsv](.
 | Step | Executor | Goal | Depends on |
 | --- | --- | --- | --- |
 | t01-baseline | cloud agent, light | Record the current verification results. | none |
-| t02-layout | local, fallback cloud | Template layout and agent contract, registered as edition-owned. | t01 |
-| t03-memory | local, fallback cloud | One memory file for each trap in `loop/SIGNS.md`. | t02 |
+| t02-layout | cloud agent | Template layout and agent contract, registered as edition-owned. | t01 |
+| t03-memory | cloud agent | One memory file for each trap in `loop/SIGNS.md`. | t02 |
 | t04-controls | cloud agent | Pinned controls in advisory CI, plus `verify.py --fast` in CI. | t02 |
 | t05-routing-map | cloud agent | Measured routing map for every task kind. | t02 |
 | t06-batch-tool | cloud agent | `tools/batch.py` for the Message Batches API, with offline tests. | t02 |
-| t07-archive-loop | local, fallback cloud | Mark the old loop as archived. Point to the new plans. | t03, t04 |
+| t07-archive-loop | cloud agent | Mark the old loop as archived. Point to the new plans. | t03, t04 |
 | t08-verify | cloud agent | Prove that the new layout and the old results agree. | t05, t06, t07 |
 
 t02 runs first and registers every path that this child adds. After t02, t03, t04, t05 and t06 run together. Only t02 touches the edition-owned registry, so their `touches` do not overlap.
@@ -38,7 +38,7 @@ t02 runs first and registers every path that this child adds. After t02, t03, t0
 - **t05.** Touches `translation/routing.md`, `tools/check_routing_map.py` and its step file. Use `python3 tools/model_report.py` and the ledger to measure cost, wall time and retry rate by task kind and model for the 549 iterations. Map each task kind to a route with the reason and the measurement:
   - Deterministic: segmenting, masking, invariants, oracle runs, link and anchor audits, packet building, `msgmerge`, impact maps, builds, imports, reports. Route `script` or CI.
   - Bulk drafts of new and fuzzy segments, minimal-edit deltas, automated reviewer passes, back-translation, canary scoring input. Route: Batch API through `tools/batch.py`, submitted by the operator, imported by a `script` step.
-  - Bounded tool fixes, fixture additions, doc moves. Route `local` with a cloud fallback, only for kinds where the gate is strong.
+  - Bounded tool fixes, fixture additions, doc moves. Route: cloud agent, `tier: light`. (The local model is not used: owner decision 2026-11-23. Record its measured cost from the bootstrap wave as the reason.)
   - Adjudication, review-fix with judgment, new tooling, prompt changes. Route: cloud agent, standard tier, with a model different from the one that produced the work under review.
   - Jury with outside vendors, native-speaker humor review, approvals, upstream pull requests, publication. Route `operator`.
   Record the expected cost change for each move from the measured history. Gate: `python3 tools/check_routing_map.py` passes. It checks that every task kind in `loop/queue/**/*.jsonl` has a row with a route from the list above, and that every row has a reason and a measurement or `no history`. Then `python3 scripts/check_context.py && python3 -I tools/verify.py --fast`.
