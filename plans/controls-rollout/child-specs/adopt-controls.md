@@ -9,11 +9,11 @@ For each repository, copy its brief from the archived [repository-specific Docke
 | Step | Executor | Goal | Depends on |
 | --- | --- | --- | --- |
 | a01-audit | script | Read-only audit with the pinned library. | none |
-| a02-apply | local, fallback cloud (pilot: cloud agent) | Apply the adoption in advisory mode. Keep all existing gates. | a01 |
+| a02-apply | cloud agent | Apply the adoption in advisory mode. Keep all existing gates. | a01 |
 | a03-probes | cloud agent | Known-bad probes, rollback test and receipt. | a02 |
 | a04-verify | cloud agent, light | Full gates from a clean clone, including Docker. | a03 |
 
-The pilot uses a cloud agent for a02 so that defects come from the library, not from the executor. The fleet uses `local` for a02 if `lessons/pilot.md` and the route report do not advise against it.
+All steps use a cloud agent or `script`. The local model is not used (owner decision 2026-11-23).
 
 ## Step details
 

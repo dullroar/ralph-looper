@@ -1,15 +1,15 @@
 ---
 id: 06-review-controls
-status: pending
+status: done
 depends_on: [05-run-controls]
 touches:
   - plans/controls-rollout/lessons/controls.md
   - plans/controls-rollout/steps/06-review-controls.md
 lane: none
 gate: python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave controls && for h in '## Keep' '## Change' '## Library defects' '## Route evidence'; do grep -qx "$h" plans/controls-rollout/lessons/controls.md || exit 1; done && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T01:36:37Z"
+evidence: gate passed 2026-11-24 (driver-verified)
 ---
 
 # Review the `controls` wave and write its lessons
@@ -31,7 +31,11 @@ Write `lessons/controls.md` with exactly these four headings, in this order:
 
 Record for each target: the final plan commit, the gate results with counts, and the UTC date.
 
-(fill in)
+- `deterministic-controls`, plan `bootstrap`: final plan commit `7b5caeaff8567681d731f445eb43997bd429cc3f`.
+- `lib/fanout.py verify`: 1/1 targets pass.
+- `release_check.sh` in a clean clone: 196 tests OK, self check `full` 7/7 passed, wheel built (SHA-256 in `lessons/controls.md`).
+- Library defects: none.
+- UTC date: 2026-11-24.
 
 ## Do not change
 

@@ -1,15 +1,15 @@
 ---
 id: 29-release-translation-pack
-status: pending
+status: done
 depends_on: [28-review-translation-pack]
 touches:
   - plans/controls-rollout/steps/29-release-translation-pack.md
 lane: none
 agent: operator
 gate: git ls-remote --exit-code --tags https://github.com/dullroar/deterministic-controls refs/tags/v0.2.0 >/dev/null && python3 lib/fanout.py published --plan-dir plans/controls-rollout --wave translation-pack
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: operator
+claimed_at: "2026-11-24T03:27:36Z"
+evidence: gate passed 2026-11-24 (operator step, driver-verified)
 ---
 
 # Operator: merge the pack and tag v0.2.0

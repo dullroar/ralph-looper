@@ -1,15 +1,15 @@
 ---
 id: 32-publish-translation-work
-status: pending
+status: done
 depends_on: [31-seed-translation-work]
 touches:
   - plans/controls-rollout/steps/32-publish-translation-work.md
 lane: none
 agent: operator
 gate: python3 lib/fanout.py published --plan-dir plans/controls-rollout --wave translation-work
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: operator
+claimed_at: "2026-11-24T03:43:21Z"
+evidence: gate passed 2026-11-24 (operator step, driver-verified)
 ---
 
 # Operator: provision and merge the v4-es-1 plan (do not run it)

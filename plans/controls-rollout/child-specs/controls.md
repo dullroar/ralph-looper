@@ -20,10 +20,10 @@ Wave `controls`. The target is a new repository made from `repo-template` in ste
 | b01-contract | cloud agent | Package skeleton, CLI, manifest and result schema, catalog loader, exit codes, contract tests. | none |
 | b02-plans-slice | cloud agent | Port `plans.schema` and `plans.graph` from `scripts/check_plan.py`, with fixtures. This is the first vertical slice. | b01 |
 | b03-self-ci | cloud agent | CI workflow for this repository, an example consumer fixture, and proof that a bad plan fails in both places. | b02 |
-| b04-index-freshness | local, fallback cloud | Port `context.index-freshness` from `build_indexes.py --check`, without writes. | b03 |
-| b05-markdown-links | local, fallback cloud | Port `markdown.local-links` from `check_links.py`, with the edge-case fixtures. | b03 |
+| b04-index-freshness | cloud agent | Port `context.index-freshness` from `build_indexes.py --check`, without writes. | b03 |
+| b05-markdown-links | cloud agent | Port `markdown.local-links` from `check_links.py`, with the edge-case fixtures. | b03 |
 | b06-secrets | cloud agent | Port `security.secrets` from the runner's `scripts/secret_guard.py` (status `required`) and `security.personal-data` from `scan_secrets.py` (personal paths and e-mail in context Markdown). | b03 |
-| b07-forbidden-artifacts | local, fallback cloud | New `repo.forbidden-artifacts`: tracked runtime files. | b03 |
+| b07-forbidden-artifacts | cloud agent | New `repo.forbidden-artifacts`: tracked runtime files. | b03 |
 | b08-adoption-tools | cloud agent | `adopt audit`, `adopt plan` (dry run), `adopt apply`, receipt, consumer shim and workflow templates. | b03 |
 | b09-test-the-tests | cloud agent | Mutation and metamorphic fixtures, fail-closed tests, performance, fault matrix. Enable all checks in this repository's `controls.toml`. | b04, b05, b06, b07 |
 | b10-release-prep | cloud agent | Docs, catalog page, changelog, release check script, version `0.1.0`. | b08, b09 |
