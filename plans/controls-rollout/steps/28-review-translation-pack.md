@@ -1,15 +1,15 @@
 ---
 id: 28-review-translation-pack
-status: pending
+status: done
 depends_on: [27-run-translation-pack]
 touches:
   - plans/controls-rollout/lessons/translation-pack.md
   - plans/controls-rollout/steps/28-review-translation-pack.md
 lane: none
 gate: python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave translation-pack && for h in '## Keep' '## Change' '## Library defects' '## Route evidence'; do grep -qx "$h" plans/controls-rollout/lessons/translation-pack.md || exit 1; done && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T03:25:32Z"
+evidence: gate passed 2026-11-24 (driver-verified)
 ---
 
 # Review the `translation-pack` wave and write its lessons
@@ -31,7 +31,11 @@ Write `lessons/translation-pack.md` with exactly these four headings, in this or
 
 Record for each target: the final plan commit, the gate results with counts, and the UTC date.
 
-(fill in)
+- Target `deterministic-controls`, final plan commit `0620d2c8f59de75ae21b87677f9046183f383657`.
+- `fanout.py verify`: `verified done`, 1/1 targets pass.
+- `release_check.sh` in a clone of `plan/translation-pack`: 369 tests passed, self check passed (7 checks), wheel `0.2.0` built.
+- Date: 2026-11-23 (UTC).
+- Open: the comparison with the local translation tools was not done. See the lessons file.
 
 ## Do not change
 
