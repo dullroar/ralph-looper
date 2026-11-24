@@ -1,15 +1,15 @@
 ---
 id: 25-publish-translation-adopt
-status: pending
+status: done
 depends_on: [24-review-translation-adopt]
 touches:
   - plans/controls-rollout/steps/25-publish-translation-adopt.md
 lane: none
 agent: operator
 gate: python3 lib/fanout.py published --plan-dir plans/controls-rollout --wave translation-adopt
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: operator
+claimed_at: "2026-11-24T03:08:37Z"
+evidence: gate passed 2026-11-24 (operator step, driver-verified)
 ---
 
 # Operator: merge the `translation-adopt` results
