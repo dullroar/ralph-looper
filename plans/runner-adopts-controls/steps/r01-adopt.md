@@ -1,6 +1,6 @@
 ---
 id: r01-adopt
-status: pending
+status: done
 depends_on: []
 touches:
   - scripts/check_context.py
@@ -15,7 +15,9 @@ touches:
   - plans/runner-adopts-controls/steps/r01-adopt.md
 lane: none
 gate: python3 scripts/check_context.py && python3 scripts/build_indexes.py --check && python3 scripts/secret_guard.py --tracked && grep -q 'd9a1a604fddb5b268a8dadeb693bcbe7fecbf6e5' scripts/controls-requirements.txt && test -s controls.toml && test -s docs/controls-adoption.md && grep -q 'controls-adoption.md' docs/README.md && grep -q '^  check:' .github/workflows/context.yml && grep -q '^  controls:' .github/workflows/context.yml && grep -q '^  runner-tests:' .github/workflows/context.yml && ! grep -qE 'continue-on-error|paths:|paths-ignore:|secrets\.' .github/workflows/context.yml && ! grep 'uses:' .github/workflows/context.yml | grep -vqE '@[0-9a-f]{40}' && grep -q 'controls.toml' AGENTS.md && git diff --quiet "$(git merge-base HEAD main)" -- scripts/install_hooks.sh && bash scripts/install_hooks.sh --self-test && bash tests/run.sh && python3 tests/test_fanout.py && python3 tests/test_report.py && python3 tests/test_check_records.py && python3 tests/test_secret_guard.py && git diff --check
-evidence: ""
+evidence: gate passed 2026-11-24 (driver-verified)
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T16:15:42Z"
 ---
 
 # Adopt the pinned controls
