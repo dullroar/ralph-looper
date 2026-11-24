@@ -1,6 +1,6 @@
 ---
 id: 33-enforcement-kit
-status: pending
+status: done
 depends_on: [17-publish-pilot]
 touches:
   - plans/controls-rollout/enforcement-kit.md
@@ -10,7 +10,7 @@ lane: none
 gate: test -s plans/controls-rollout/enforcement-kit.md && bash plans/controls-rollout/probes/self_test.sh && python3 scripts/check_context.py && git diff --check
 claimed_by: ""
 claimed_at: ""
-evidence: ""
+evidence: "gate (enforcement-kit.md non-empty, probes/self_test.sh, check_context.py, git diff --check) passed on 2026-11-23; self_test: 19 checks ok"
 ---
 
 # Write the protection checklist and the bypass probes
@@ -28,7 +28,9 @@ Source phase 10. Write what the operator needs to make the checks required, and 
 
 ## Results
 
-(fill in)
+- `enforcement-kit.md`: capability table for the 14 repositories, ruleset JSON and `gh api` commands, `CODEOWNERS` text, probe table, break-glass rule, recording rules.
+- The agent could not run `gh` (permission denied in this session). The visibility and plan columns say "read it". The kit has the read-only commands. Step 34 (operator) fills them. Only the facts that the repository already records are filled in (the library is public, the translation repository is private).
+- `probes/make_probe.sh`, `probes/apply_probe.py`, `probes/self_test.sh`: 12 probes. The self-test makes each probe in a disposable local repository, checks both hooks block the two secret probes, and needs no network.
 
 ## Do not change
 
