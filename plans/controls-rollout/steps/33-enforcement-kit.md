@@ -8,9 +8,9 @@ touches:
   - plans/controls-rollout/steps/33-enforcement-kit.md
 lane: none
 gate: test -s plans/controls-rollout/enforcement-kit.md && bash plans/controls-rollout/probes/self_test.sh && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "gate (enforcement-kit.md non-empty, probes/self_test.sh, check_context.py, git diff --check) passed on 2026-11-23; self_test: 19 checks ok"
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T02:43:17Z"
+evidence: gate passed 2026-11-24 (driver-verified)
 ---
 
 # Write the protection checklist and the bypass probes
