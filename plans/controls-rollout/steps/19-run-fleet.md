@@ -1,6 +1,6 @@
 ---
 id: 19-run-fleet
-status: pending
+status: done
 depends_on: [18-seed-fleet]
 touches:
   - plans/controls-rollout/steps/19-run-fleet.md
@@ -9,7 +9,7 @@ agent: operator
 gate: python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave fleet
 claimed_by: ""
 claimed_at: ""
-evidence: ""
+evidence: "fanout verify --wave fleet: 8/8 targets pass, 2026-11-24 (claude; 9 recorded operator amendments in 4 targets)"
 ---
 
 # Operator: run the `fleet` wave
