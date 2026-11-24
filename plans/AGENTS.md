@@ -19,11 +19,7 @@ Read the list. Open only the plans whose "Read me when" line matches your task.
 
 <!-- BEGIN GENERATED INDEX -->
 
-* [controls-rollout/plan.md](./controls-rollout/plan.md)
-  Read me when: you want to build, release or adopt the deterministic-controls library, roll it out to the template, the runner and the ten repositories, or move the Spanish translation repository onto Ralph with routed and batch work.
 * [runner-adopts-controls/plan.md](./runner-adopts-controls/plan.md)
   Read me when: you add or change the deterministic-controls adoption of ralph-looper itself (pin, controls.toml, the controls and runner-tests jobs), or archive the controls-rollout plans.
-* [runner-routing/plan.md](./runner-routing/plan.md)
-  Read me when: you want to add per-step executor routing, operator and script steps, gate and touches enforcement, the fan-out tool or the route report to ralph-looper.
 
 <!-- END GENERATED INDEX -->

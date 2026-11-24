@@ -8,7 +8,7 @@ This report gives the notes that [baseline.tsv](./baseline.tsv) cannot hold. Ste
 - The step ran each context check in a temporary `git worktree add --detach` of that commit, outside all repositories. It removed each temporary tree after the check.
 - `seconds` is the wall time of `python3 scripts/check_context.py` in that tree. It is `0` when the check is absent.
 - `ci_workflows` lists the files in `.github/workflows/` at that commit.
-- The step did not run Docker tests. Each `not-run` with a Docker gate has the reason "Docker gate, recorded by the 2026-11-22 rollout". The archived [rollout record](../archive/ralphify-repositories/steps/02-verify-rollout.md) has those results. All ten Docker gates passed on 2026-11-22.
+- The step did not run Docker tests. Each `not-run` with a Docker gate has the reason "Docker gate, recorded by the 2026-11-22 rollout". The archived [rollout record](../ralphify-repositories/steps/02-verify-rollout.md) has those results. All ten Docker gates passed on 2026-11-22.
 
 ## This repository
 

@@ -39,7 +39,7 @@ Repositories (find them under `$REPOS_ROOT`): `ralph-looper`, `repo-template`, `
 ## Rules for the baseline
 
 - Read only. Do not change, commit, fetch into or check out anything in another repository. Run each context check in a temporary `git worktree add --detach` of the default branch outside all repositories, or in `git archive` output. Remove the temporary tree after.
-- Do not run Docker tests in this step. Record `test_result=not-run` and the reason "Docker gate, recorded by the 2026-11-22 rollout". The archived [rollout record](../../archive/ralphify-repositories/steps/02-verify-rollout.md) has those results.
+- Do not run Docker tests in this step. Record `test_result=not-run` and the reason "Docker gate, recorded by the 2026-11-22 rollout". The archived [rollout record](../../ralphify-repositories/steps/02-verify-rollout.md) has those results.
 - The translation repository has no `scripts/check_context.py`. Record `absent`. Its fast check is `python3 -I tools/verify.py --fast`. Record that result in `baseline.md`. Its working branch is the default branch.
 - Do not write local paths, host names or user names in the records. Use repository names only.
 
