@@ -1,6 +1,6 @@
 ---
 id: 12-review-template
-status: pending
+status: done
 depends_on: [11-run-template]
 touches:
   - plans/controls-rollout/lessons/template.md
@@ -9,7 +9,7 @@ lane: none
 gate: python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave template && for h in '## Keep' '## Change' '## Library defects' '## Route evidence'; do grep -qx "$h" plans/controls-rollout/lessons/template.md || exit 1; done && python3 scripts/check_context.py && git diff --check
 claimed_by: ""
 claimed_at: ""
-evidence: ""
+evidence: "gate passed 2026-11-24 (fanout.py verify 1/1, four headings present, check_context.py ok, git diff --check clean)"
 ---
 
 # Review the `template` wave and write its lessons
@@ -31,7 +31,11 @@ Write `lessons/template.md` with exactly these four headings, in this order:
 
 Record for each target: the final plan commit, the gate results with counts, and the UTC date.
 
-(fill in)
+- Target `repo-template`, child plan `adopt-controls`.
+- Final plan commit: `a658fce8f56a397625d9491c44a14271992075c5`.
+- Gate result: `fanout.py verify` passed, 1/1 targets. Smoke tests in a temporary clone: 31 tests, 0 failures.
+- Date (UTC): 2026-11-24.
+- Details are in `lessons/template.md`.
 
 ## Do not change
 
