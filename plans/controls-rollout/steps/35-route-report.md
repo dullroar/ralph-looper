@@ -1,6 +1,6 @@
 ---
 id: 35-route-report
-status: pending
+status: done
 depends_on: [21-publish-fleet, 32-publish-translation-work]
 touches:
   - plans/controls-rollout/route-report.md
@@ -9,9 +9,9 @@ lane: none
 agent: script
 run: python3 lib/report.py --work "$RALPH_WORK" --by plan --format md > plans/controls-rollout/route-report.md
 gate: test -s plans/controls-rollout/route-report.md && grep -q '|' plans/controls-rollout/route-report.md && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: script cli-default
+claimed_at: "2026-11-24T15:31:41Z"
+evidence: gate passed 2026-11-24 (driver-verified)
 ---
 
 # Write the route report for the program
