@@ -7,9 +7,9 @@ touches:
   - plans/controls-rollout/steps/12-review-template.md
 lane: none
 gate: python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave template && for h in '## Keep' '## Change' '## Library defects' '## Route evidence'; do grep -qx "$h" plans/controls-rollout/lessons/template.md || exit 1; done && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "gate passed 2026-11-24 (fanout.py verify 1/1, four headings present, check_context.py ok, git diff --check clean)"
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T01:51:16Z"
+evidence: gate passed 2026-11-24 (driver-verified)
 ---
 
 # Review the `template` wave and write its lessons
