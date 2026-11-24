@@ -1,6 +1,6 @@
 ---
 id: 34-apply-enforcement
-status: pending
+status: done
 depends_on: [21-publish-fleet, 25-publish-translation-adopt, 29-release-translation-pack, 33-enforcement-kit]
 touches:
   - plans/controls-rollout/steps/34-apply-enforcement.md
@@ -8,9 +8,9 @@ touches:
 lane: none
 agent: operator
 gate: python3 scripts/check_records.py plans/controls-rollout/enforcement.tsv --min-rows 14 --columns repo,state,probes,date --match 'state=required|documented-gap' --match 'date=[0-9]{4}-[0-9]{2}-[0-9]{2}'
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: operator
+claimed_at: "2026-11-24T15:59:06Z"
+evidence: gate passed 2026-11-24 (operator step, driver-verified)
 ---
 
 # Operator: apply the protection and run the bypass probes
