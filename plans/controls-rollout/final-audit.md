@@ -10,9 +10,7 @@ This audit reads the records of the plan. It does not change any other repositor
 
 ## 1. Verdict
 
-The program is one coherent system. It is not finished in four places:
-
-0. **The `fleet` wave does not verify now.** `lmdb-fs` fails `fanout.py verify` (see section 3 and B13).
+The program is one coherent system. It is not finished in three places:
 
 1. **No repository has enforced protection.** All 14 rows of `enforcement.tsv` have the state `documented-gap`. The reason is an owner decision: the ruleset keeps the admin bypass and has no code owner review. Agents use the owner's credentials, so an agent can merge past a red check.
 2. **The adoption of `ralph-looper` is not in this repository.** Step `09-runner-adopts-controls` has `status: done`. But this branch has no `controls.toml`, no `scripts/controls-requirements.txt` and no `docs/controls-adoption.md`. `git log --all` shows no commit for them. The step file still has "Resume notes" that say the step was blocked on network access. The gate of step 09 passed, because it only runs the old checks and the runner tests. The gate did not require the files. See B1.
@@ -54,7 +52,7 @@ Notes on the matrix:
 
 - The pilot and fleet receipts all show seven checks passed and the state `advisory` at adoption. Step 34 then recorded each state in `enforcement.tsv`. No receipt was updated afterwards in the evidence that this audit read.
 - The receipt text of a fleet repository can name a wrong base revision. The Rollback section of the record is the correct source (fleet lessons).
-- `lmdb-fs` has an allowlist `.dockerignore` without `!controls.toml`. The image runs the library with its default `ci` configuration, not with `controls.toml`. The fleet lessons ask the operator to add the line. This audit found no record that it was added. See B5.
+- `lmdb-fs` has an allowlist `.dockerignore` without `!controls.toml`. The image runs the library with its default `ci` configuration, not with `controls.toml`. The fleet lessons ask the operator to add the line. The operator follow-up `ce3177a67415` in the fleet wave record adds it. See B5 (the library still does not do this itself).
 
 ### Enforcement gaps
 
@@ -79,7 +77,7 @@ The baseline is `plans/runner-routing/baseline.tsv` (13 repositories, 2026-11-23
 | `duckdb-fs` | pass | Docker gate, not run | Same. |
 | `ffmpeg_mcp` | pass | Docker gate, not run | Same. |
 | `gpx_parser` | pass | Docker gate, not run | Same. |
-| `lmdb-fs` | pass | Docker gate, not run | Same. The Docker gate does not use `controls.toml` (B5). |
+| `lmdb-fs` | pass | Docker gate, not run | Same. The Docker gate now sees `controls.toml` (follow-up `ce3177a67415`); the library fix is B5. |
 | `metadata_driven_gx` | pass | Docker gate, not run | Same. |
 | `metadata_mcp` | pass | Docker gate, not run | Same. |
 | `pandoc_mcp` | pass | Docker gate, not run | Same. |
@@ -90,9 +88,9 @@ The baseline says `not-run` for the Docker gate, so there is no earlier result t
 
 `deterministic-controls` is not in the baseline. It did not exist on 2026-11-23.
 
-The `fanout.py verify` command was run for the seven waves on 2026-11-24. Six pass: `controls`, `template`, `pilot`, `translation-adopt`, `translation-pack` and `translation-work` (the last one: `verified seeded`, as the plan is not run on purpose).
+The `fanout.py verify` command was run for the seven waves on 2026-11-24. All pass: `controls`, `template`, `pilot`, `fleet` (8 of 8), `translation-adopt`, `translation-pack` and `translation-work` (the last one: `verified seeded`, as the plan is not run on purpose).
 
-**The `fleet` wave fails: 7 of 8 targets pass.** The failing target is `lmdb-fs`. The message is `plan/adopt-controls differs from the recorded plan SHA`. The branch moved after the recorded run (recorded final plan commit in the review: `0004e414f71017823879f70c5e73e2d46dbba641`). The audit agent could not read that repository, so it does not know the new commit. The probable cause is the follow-up change that the fleet lessons ask for (add `!controls.toml` to `.dockerignore`). This is a guess. See B13.
+The `fleet` wave first failed for `lmdb-fs` (`plan/adopt-controls differs from the recorded plan SHA`). The operator then recorded the follow-up commit `ce3177a67415` (add `!controls.toml` to the allowlist `.dockerignore`; the Docker gate passed after it). The wave verifies now. See B13 and B5.
 
 ## 4. Route summary
 
@@ -169,7 +167,7 @@ Each item has its evidence. Items B1 to B6 are defects or open work in this prog
 | B9 | **Fleet operations and upgrade waves** (phase 16). A pin upgrade is a pull request in each repository. The `v0.1.1` to `v0.1.2` change was a real case (one defect, fixed in the library). `lib/fanout.py` already runs a wave, and `pin.sh` records the pins. Missing: a way to list which repository has which pin, and a rollout order. | `pins.tsv`, lessons `pilot`. | Plan next |
 | B10 | Optional adoption in `gpx_mcp`. | Named in the step text. It is not in any wave manifest. The goal says a repository outside the manifests is out of scope. Add it only after a new decision in `decisions.tsv`. | Optional |
 | B11 | Decide whether a token check (macro IDs, numbers) belongs in the translation pack. | Lessons `translation-pack`, section Change. | Medium |
-| B13 | Fix the `fleet` verify failure for `lmdb-fs`. Find the commits on `plan/adopt-controls` after the recorded SHA. If they are the `!controls.toml` fix, record them with `fanout.py amend` or re-record the SHA. Then run `fanout.py verify --wave fleet` again. | `fanout.py verify --wave fleet` on 2026-11-24: `lmdb-fs: plan/adopt-controls differs from the recorded plan SHA`; 7 of 8 pass. This blocks the gate of step 36. | High |
+| B13 | Closed. The `fleet` verify failure for `lmdb-fs` was fixed by the operator follow-up record. Keep the lesson: a follow-up commit on a child branch needs a record in the wave at once. | `fanout.py verify --wave fleet` on 2026-11-24: 8 of 8 pass, `lmdb-fs` with follow-up `ce3177a67415`. | Closed |
 | B12 | Drop the local route from the planning default, and keep the measurement. Revisit it only for new hardware. | Decision `local_route`; `bootstrap` route row. | Done in practice |
 
 ### Open library defects

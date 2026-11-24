@@ -1,6 +1,6 @@
 ---
 id: 36-final-audit
-status: in_progress
+status: done
 depends_on: [34-apply-enforcement, 35-route-report]
 touches:
   - plans/controls-rollout/final-audit.md
@@ -9,7 +9,7 @@ lane: none
 gate: for w in controls template pilot fleet translation-adopt translation-pack translation-work; do python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave $w || exit 1; done && python3 scripts/check_records.py plans/controls-rollout/enforcement.tsv --min-rows 14 && test -s plans/controls-rollout/final-audit.md && python3 scripts/check_context.py && git diff --check
 claimed_by: ""
 claimed_at: ""
-evidence: ""
+evidence: "Gate passed on 2026-11-24: fanout.py verify for 7 waves (fleet 8/8), check_records enforcement.tsv --min-rows 14, final-audit.md not empty, check_context.py, git diff --check. Run as separate commands."
 ---
 
 # Audit the program and write the backlog
@@ -41,7 +41,9 @@ If you cannot finish, write "Resume notes" below. Keep the status `in_progress`.
 
 ## Resume notes
 
-Partial. `plans/controls-rollout/final-audit.md` is written (adoption matrix, baseline comparison, route summary, limits, backlog, archive step). The gate does not pass yet.
+Resolved: the operator recorded the lmdb-fs follow-up; the gate passes and the step is done. Earlier notes follow.
+
+Partial (earlier). `plans/controls-rollout/final-audit.md` is written (adoption matrix, baseline comparison, route summary, limits, backlog, archive step). The gate does not pass yet.
 
 - Blocker: `python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave fleet` exits 1. `lmdb-fs: plan/adopt-controls differs from the recorded plan SHA` (7 of 8 pass). The other six waves verify. The check, the record check, `check_context.py` and the file test pass.
 - Why I stopped: the fix is in the `lmdb-fs` repository or in the operator's wave record. Both are outside `touches`, and the agent session cannot read other repositories. The operator must find the new commits on `plan/adopt-controls` in `lmdb-fs` (probably the `!controls.toml` fix from the fleet lessons) and record them with `fanout.py amend`, or re-record the SHA. Then run the gate again. Backlog item B13.
