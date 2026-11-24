@@ -1,13 +1,15 @@
 ---
 id: r04-archive
-status: pending
+status: done
 depends_on: [r03-publish]
 touches:
   - plans/runner-adopts-controls/steps/r04-archive.md
 lane: none
 agent: operator
 gate: git fetch -q origin && git cat-file -e origin/main:plans/archive/controls-rollout/plan.md && git cat-file -e origin/main:plans/archive/runner-routing/plan.md && ! git cat-file -e origin/main:plans/controls-rollout/plan.md 2>/dev/null
-evidence: ""
+evidence: gate passed 2026-11-24 (operator step, driver-verified)
+claimed_by: operator
+claimed_at: "2026-11-24T16:24:20Z"
 ---
 
 # Operator: archive the finished plans
