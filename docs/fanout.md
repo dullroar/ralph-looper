@@ -144,6 +144,19 @@ python3 lib/fanout.py amend --plan-dir DIR --wave NAME --repo REPO --commit SHA 
 - Amendments must form a line: each one descends from the seed or from the previous amendment, and all are on the plan branch.
 - The command takes the wave lock. Run it when no `run` of that wave is active.
 - Review each amendment like code. The reason is the audit trail in every `verify` report.
+- An amendment does not reach a step worktree that exists already. If the amended step was blocked, rebase its worktree onto the plan branch, write the new plan commit to `$RALPH_WORK/<repo>/<child_plan>/base/<step>`, and set `attempts/<step>` to `0`. Otherwise the driver resumes the old worktree, and the agent does not see the change.
+
+## Operator follow-ups
+
+After a run is done, the operator sometimes adds a fix before publishing, for example a file that a review found missing. This commit is not a plan change, so `amend` refuses it. Commit it on `plan/<child_plan>` and record it:
+
+```bash
+python3 lib/fanout.py followup --plan-dir DIR --wave NAME --repo REPO --commit SHA --reason "one line: why"
+```
+
+- Each follow-up is exactly one commit. Its parent is the final commit of the run or the previous follow-up. Record each commit one at a time.
+- A follow-up may not change `plans/<child_plan>/`. The gates, the steps and the evidence stay as the run left them.
+- `verify` checks the child steps at the recorded final commit and accepts the last follow-up as the branch head. It prints every follow-up with its reason.
 
 ## Normal procedure
 
