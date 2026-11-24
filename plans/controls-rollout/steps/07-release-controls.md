@@ -1,15 +1,15 @@
 ---
 id: 07-release-controls
-status: pending
+status: done
 depends_on: [06-review-controls]
 touches:
   - plans/controls-rollout/steps/07-release-controls.md
 lane: none
 agent: operator
 gate: git ls-remote --exit-code --tags https://github.com/dullroar/deterministic-controls refs/tags/v0.1.0 >/dev/null && python3 lib/fanout.py published --plan-dir plans/controls-rollout --wave controls
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: operator
+claimed_at: "2026-11-24T01:38:46Z"
+evidence: gate passed 2026-11-24 (operator step, driver-verified)
 ---
 
 # Operator: merge the library and tag v0.1.0
