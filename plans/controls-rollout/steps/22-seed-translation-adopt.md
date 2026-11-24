@@ -1,6 +1,6 @@
 ---
 id: 22-seed-translation-adopt
-status: pending
+status: blocked
 depends_on: [09-runner-adopts-controls, 13-publish-template]
 touches:
   - plans/controls-rollout/seeds/translation-adopt/**
