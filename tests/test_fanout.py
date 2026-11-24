@@ -175,6 +175,89 @@ class FanoutTest(unittest.TestCase):
         self.assertEqual(code, 1, out)
         self.assertIn("gate text differs from the seed", out)
 
+    def test_amend_accepts_only_recorded_operator_gate_changes(self):
+        self.wave([("alpha", "main", CHILD, "seed", f"seeds/{CHILD}", "yes")])
+        code, out = self.fanout("run")
+        self.assertEqual(code, 0, out)
+        repo = self.repos / "alpha"
+        seed = self.record("alpha")["seed_commit"]
+        plan_tree = self.work / "alpha" / CHILD / "worktrees" / "_plan"
+        step_file = plan_tree / "plans" / CHILD / "steps" / "02-b.md"
+        record_path = self.work / "fanout" / "parent-plan" / "w1" / "targets" / "alpha.json"
+
+        def commit(message, old, new, path=step_file):
+            path.write_text(path.read_text().replace(old, new) if old else new)
+            git(plan_tree, "add", "-A")
+            git(plan_tree, "commit", "-q", "-m", message)
+            sha = git(repo, "rev-parse", f"refs/heads/plan/{CHILD}")
+            data = json.loads(record_path.read_text())
+            data["final_sha"] = sha
+            record_path.write_text(json.dumps(data))
+            return sha
+
+        # An operator changes a gate. Before it is recorded, verify fails.
+        amend_sha = commit("operator: stricter gate", "gate: test -f 02-b.out", "gate: test -s 02-b.out || test -f 02-b.out")
+        code, out = self.fanout("verify")
+        self.assertEqual(code, 1, out)
+        self.assertIn("gate text differs", out)
+
+        # Bad amendments are refused: no reason, a commit outside the plan branch history, the seed itself.
+        code, out = self.fanout("amend", "--repo", "alpha", "--commit", amend_sha, "--reason", " ")
+        self.assertEqual(code, 1, out)
+        code, out = self.fanout("amend", "--repo", "alpha", "--commit", self.bases["alpha"], "--reason", "x")
+        self.assertEqual(code, 1, out)
+        code, out = self.fanout("amend", "--repo", "alpha", "--commit", seed, "--reason", "x")
+        self.assertEqual(code, 1, out)
+
+        # Recorded, verify passes and reports the amendment and its reason. A repeat is a no-op.
+        code, out = self.fanout("amend", "--repo", "alpha", "--commit", amend_sha, "--reason", "re-pin after review")
+        self.assertEqual(code, 0, out)
+        code, out = self.fanout("amend", "--repo", "alpha", "--commit", amend_sha, "--reason", "again")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(len(self.record("alpha")["amendments"]), 1)
+        code, out = self.fanout("verify")
+        self.assertEqual(code, 0, out)
+        self.assertIn("operator amendments: 1", out)
+        self.assertIn("re-pin after review", out)
+
+        # A later, unrecorded gate change (for example by an agent) still fails.
+        commit("agent weakens gate", "gate: test -s 02-b.out || test -f 02-b.out", "gate: true")
+        code, out = self.fanout("verify")
+        self.assertEqual(code, 1, out)
+        self.assertIn("gate text differs", out)
+
+        # An amendment that changes files outside plans/<child>/ is refused.
+        outside = commit("touch product", None, "x\n", path=plan_tree / "product.txt")
+        code, out = self.fanout("amend", "--repo", "alpha", "--commit", outside, "--reason", "x")
+        self.assertEqual(code, 1, out)
+        self.assertIn("may change only", out)
+
+    def test_amendment_does_not_launder_an_earlier_gate_change(self):
+        # An unrecorded gate change, followed by an operator amendment that does not touch that gate,
+        # must still fail: the amendment accepts only the gate changes that it makes itself.
+        self.wave([("alpha", "main", CHILD, "seed", f"seeds/{CHILD}", "yes")])
+        code, out = self.fanout("run")
+        self.assertEqual(code, 0, out)
+        repo = self.repos / "alpha"
+        plan_tree = self.work / "alpha" / CHILD / "worktrees" / "_plan"
+        steps = plan_tree / "plans" / CHILD / "steps"
+        record_path = self.work / "fanout" / "parent-plan" / "w1" / "targets" / "alpha.json"
+        first = steps / "01-a.md"
+        first.write_text(first.read_text().replace("gate: test -f 01-a.out", "gate: true"))
+        git(plan_tree, "commit", "-q", "-am", "agent weakens 01-a")
+        second = steps / "02-b.md"
+        second.write_text(second.read_text() + "\nOperator note.\n")
+        git(plan_tree, "commit", "-q", "-am", "operator note on 02-b")
+        sha = git(repo, "rev-parse", f"refs/heads/plan/{CHILD}")
+        data = json.loads(record_path.read_text())
+        data["final_sha"] = sha
+        record_path.write_text(json.dumps(data))
+        code, out = self.fanout("amend", "--repo", "alpha", "--commit", sha, "--reason", "note only")
+        self.assertEqual(code, 0, out)
+        code, out = self.fanout("verify")
+        self.assertEqual(code, 1, out)
+        self.assertIn("step 01-a gate text differs", out)
+
     def test_failed_gate_leaves_target_incomplete(self):
         self.seed_wave()
         code, out = self.fanout("run", FANOUT_FAIL_REPO="beta")
