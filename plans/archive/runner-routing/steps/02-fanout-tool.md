@@ -16,7 +16,7 @@ evidence: gate passed 2026-11-23 (driver-verified)
 
 # Combine the two plan-local launchers into one tested fan-out tool
 
-A parent plan in this repository often runs child plans in other repositories. The [ralphify launcher](../../archive/ralphify-repositories/rollout.py) and the [MCP fan-out](../../archive/sharpen-mcp-suite/fanout.py) did this twice, with different code. Read both and their tests. Keep the safety properties of both. Build one general tool. The controls rollout uses it for every wave.
+A parent plan in this repository often runs child plans in other repositories. The [ralphify launcher](../../ralphify-repositories/rollout.py) and the [MCP fan-out](../../sharpen-mcp-suite/fanout.py) did this twice, with different code. Read both and their tests. Keep the safety properties of both. Build one general tool. The controls rollout uses it for every wave.
 
 ## Change
 

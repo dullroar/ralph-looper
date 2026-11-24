@@ -2,7 +2,7 @@
 
 Waves `pilot` (2 repositories) and `fleet` (8 repositories). Source phases: 8 and 9. All ten repositories came from `repo-template` on 2026-11-22. They have `scripts/check_context.py`, `.github/workflows/context.yml`, a Dockerfile and `scripts/test_docker.sh`. Write one seed for each repository: `seeds/<wave>/<repo>/`.
 
-For each repository, copy its brief from the archived [repository-specific Docker gates](../../archive/ralphify-repositories/targets.md) into the seed's `plan.md`, under "Repository brief". Copy the Docker gate exactly. For the fleet, also copy every rule from `lessons/pilot.md` that applies.
+For each repository, copy its brief from the archived [repository-specific Docker gates](../../ralphify-repositories/targets.md) into the seed's `plan.md`, under "Repository brief". Copy the Docker gate exactly. For the fleet, also copy every rule from `lessons/pilot.md` that applies.
 
 ## Steps
 
