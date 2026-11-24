@@ -1,13 +1,15 @@
 ---
 id: r03-publish
-status: pending
+status: done
 depends_on: [r02-probes]
 touches:
   - plans/runner-adopts-controls/steps/r03-publish.md
 lane: none
 agent: operator
 gate: git fetch -q origin && for f in controls.toml docs/controls-adoption.md scripts/controls-requirements.txt; do git cat-file -e origin/main:$f || exit 1; done && test "$(gh api 'repos/{owner}/{repo}/rules/branches/main' --jq '[.[] | select(.type=="required_status_checks") | .parameters.required_status_checks[].context] | sort | join(",")')" = check,controls,runner-tests
-evidence: ""
+evidence: gate passed 2026-11-24 (operator step, driver-verified)
+claimed_by: operator
+claimed_at: "2026-11-24T16:22:09Z"
 ---
 
 # Operator: publish and require the checks
