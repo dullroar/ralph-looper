@@ -1,6 +1,6 @@
 ---
 id: 24-review-translation-adopt
-status: pending
+status: done
 depends_on: [23-run-translation-adopt]
 touches:
   - plans/controls-rollout/lessons/translation-adopt.md
@@ -9,7 +9,7 @@ lane: none
 gate: python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave translation-adopt && for h in '## Keep' '## Change' '## Library defects' '## Route evidence'; do grep -qx "$h" plans/controls-rollout/lessons/translation-adopt.md || exit 1; done && python3 scripts/check_context.py && git diff --check
 claimed_by: ""
 claimed_at: ""
-evidence: ""
+evidence: "gate passed 2026-11-23: fanout.py verify (1/1 targets pass), four lesson headings, check_context.py, git diff --check"
 ---
 
 # Review the `translation-adopt` wave and write its lessons
@@ -31,7 +31,7 @@ Write `lessons/translation-adopt.md` with exactly these four headings, in this o
 
 Record for each target: the final plan commit, the gate results with counts, and the UTC date.
 
-(fill in)
+- `aprende-a-programar-como-un-bicho-raro`: final plan commit `f776cf00cc39fd81de763d25072597f838a39339`. `fanout.py verify` printed `verified done` and `verify: 1/1 targets pass`. Date: 2026-11-23 (UTC). The lessons are in `lessons/translation-adopt.md`.
 
 ## Do not change
 
