@@ -1,15 +1,15 @@
 ---
 id: 17-publish-pilot
-status: pending
+status: done
 depends_on: [16-review-pilot]
 touches:
   - plans/controls-rollout/steps/17-publish-pilot.md
 lane: none
 agent: operator
 gate: python3 lib/fanout.py published --plan-dir plans/controls-rollout --wave pilot
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: operator
+claimed_at: "2026-11-24T02:40:12Z"
+evidence: gate passed 2026-11-24 (operator step, driver-verified)
 ---
 
 # Operator: merge the `pilot` results
