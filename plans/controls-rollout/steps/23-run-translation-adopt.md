@@ -1,15 +1,15 @@
 ---
 id: 23-run-translation-adopt
-status: pending
+status: done
 depends_on: [22-seed-translation-adopt]
 touches:
   - plans/controls-rollout/steps/23-run-translation-adopt.md
 lane: none
 agent: operator
 gate: python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave translation-adopt
-claimed_by: ""
-claimed_at: ""
-evidence: ""
+claimed_by: operator
+claimed_at: "2026-11-24T02:54:01Z"
+evidence: gate passed 2026-11-24 (operator step, driver-verified)
 ---
 
 # Operator: run the `translation-adopt` wave
