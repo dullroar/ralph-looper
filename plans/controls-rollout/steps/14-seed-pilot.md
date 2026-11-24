@@ -7,9 +7,9 @@ touches:
   - plans/controls-rollout/steps/14-seed-pilot.md
 lane: none
 gate: python3 lib/fanout.py ready --plan-dir plans/controls-rollout --wave pilot && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "gate: python3 lib/fanout.py ready --plan-dir plans/controls-rollout --wave pilot && python3 scripts/check_context.py && git diff --check; result: both targets ready (5 pending steps each), all checks ok, no diff errors; 2026-11-24 (UTC)"
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T02:03:47Z"
+evidence: gate passed 2026-11-24 (driver-verified)
 ---
 
 # Write the seed for the `pilot` wave
