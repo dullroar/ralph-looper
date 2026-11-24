@@ -34,7 +34,7 @@ The old loop ran one task at a time. Here seven lanes run in parallel until the 
   - Fix steps: `plans/v4-es-1/steps/fix-*.md`, written by `tools/fix_steps.py`.
 - **English clone.** `translation/source.json` names the clone (`english_clone_path`) and the pinned commit. Tools read the commit with `git ls-tree`, so the clone only has to contain the object. Do not move its HEAD.
 - **Routing.** `translation/routing.md` maps the task kinds. In this plan: `packet` and `gate` are `script`; `audit` is `script`, `batch` or `operator`; `review-fix` is an agent (a different model from the translator) or `batch`; `meta` is a light agent or `operator`.
-- **Models.** The translator and the in-loop reviewer were `claude-sonnet-5-5`. The adjudicator (j06) uses another vendor (`agent: codex`). A Batch API juror must not be a model of the loop.
+- **Models.** The translator and the in-loop reviewer were `claude-sonnet-5-5`. The adjudicator (j06) runs on Claude with a model other than the translator's (owner decision: Codex is reserved). It records the reported model and stops if it is `claude-sonnet-5-5`. A Batch API juror must not be a model of the loop.
 - **Local model.** Not used (owner decision 2026-11-23: too slow on this host).
 
 ## Steps
@@ -48,7 +48,7 @@ The old loop ran one task at a time. Here seven lanes run in parallel until the 
 | [j03-batch-jurors](./steps/j03-batch-jurors.md) | operator | Submit and collect the Jury batch under the USD cap. | j02 |
 | [j04-outside-jurors](./steps/j04-outside-jurors.md) | operator | Outside jurors review the packets. | j01, g01 |
 | [j05-ingest](./steps/j05-ingest.md) | script | Ingest the replies, write the report and the findings. | j03, j04 |
-| [j06-adjudicate](./steps/j06-adjudicate.md) | agent (other vendor) | Decide every finding. | j05 |
+| [j06-adjudicate](./steps/j06-adjudicate.md) | agent (Claude, not the translator's model) | Decide every finding. | j05 |
 | [j07-human-decisions](./steps/j07-human-decisions.md) | operator | Jim decides the `needs-human` findings. | j06 |
 | [j08-fanout-fixes](./steps/j08-fanout-fixes.md) | script | Write one fix step for each PO file or code family. | j07, g01 |
 | [j09-round-two](./steps/j09-round-two.md) | operator | Second round on the changed passages, or a recorded reason for none. | j08, h02 and all `fix-*` (by its gate) |

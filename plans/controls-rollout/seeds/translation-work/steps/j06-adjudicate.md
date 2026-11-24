@@ -7,7 +7,6 @@ touches:
   - review/adjudication-notes.md
   - plans/v4-es-1/steps/j06-adjudicate.md
 lane: none
-agent: codex
 gate: python3 tools/jury_gate.py --stage adjudicated && test -s review/adjudication-notes.md && python3 plans/v4-es-1/gatelib.py guard && git diff --check
 claimed_by: ""
 claimed_at: ""
@@ -16,7 +15,7 @@ evidence: ""
 
 # Adjudicate every Jury finding
 
-You are the fresh-context adjudicator. You are not a juror. The translator was `claude-sonnet-5-5`, so this step runs on another vendor (`agent: codex`). If that agent is not available, write "Resume notes" and stop. Do not use the translator's model.
+You are the fresh-context adjudicator. You are not a juror. The translator was `claude-sonnet-5-5`. This step runs on Claude (owner decision 2026-11-23: Codex is reserved for the owner's own use), with the host's standard model, which is not the translator's model. Read the model that the driver reports in its usage block and write it in `review/adjudication-notes.md`. If the reported model is `claude-sonnet-5-5`, stop and set `status: blocked`: the adjudicator must not be the translator's model. Another vendor is possible only if the owner approves it.
 
 ## Change
 
