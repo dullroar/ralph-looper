@@ -10,7 +10,8 @@
 #
 # An existing hook that is not ours moves to <hook>.local. Our hook calls it after the guard,
 # with the same arguments and stdin. Running the installer twice changes nothing.
-# The hooks use scripts/secret_guard.py of the repository. If it is absent, they use $SECRET_GUARD.
+# The hooks use scripts/secret_guard.py of the repository. If it is absent, they use $SECRET_GUARD,
+# then `git config secretguard.path` (set it globally: non-interactive shells do not read ~/.bashrc).
 set -euo pipefail
 
 MARKER="# secret-guard hook v1 (installed by scripts/install_hooks.sh)"
@@ -26,8 +27,9 @@ COMMON
 top=$(git rev-parse --show-toplevel) || exit 2
 guard="$top/scripts/secret_guard.py"
 [ -f "$guard" ] || guard="${SECRET_GUARD:-}"
+if [ -z "$guard" ] || [ ! -f "$guard" ]; then guard=$(git config --get secretguard.path || true); fi
 if [ -z "$guard" ] || [ ! -f "$guard" ]; then
-  echo "secret-guard: scripts/secret_guard.py not found. Set SECRET_GUARD to the runner copy." >&2
+  echo "secret-guard: scripts/secret_guard.py not found. Run: git config --global secretguard.path <runner>/scripts/secret_guard.py" >&2
   exit 1
 fi
 local_hook="$(dirname "$0")/$(basename "$0").local"
@@ -171,6 +173,18 @@ self_test() {
 
   git checkout -q -b topic
   if git push -q origin topic 2>/dev/null; then fail "pre-push let a secret in on a new branch"; fi
+
+  # Without $SECRET_GUARD (non-interactive shells do not read ~/.bashrc), the hooks use git config.
+  echo "plain" >plain.txt
+  git add plain.txt
+  if env -u SECRET_GUARD git commit -q -m no-guard 2>/dev/null; then fail "commit passed with no guard found"; fi
+  git config secretguard.path "$guard"
+  env -u SECRET_GUARD git commit -q -m via-config || fail "secretguard.path fallback was not used"
+  echo "key = $fake" >leak2.txt
+  git add leak2.txt
+  if env -u SECRET_GUARD git commit -q -m leak2 2>/dev/null; then fail "secretguard.path guard let a secret in"; fi
+  git rm -q --cached leak2.txt && rm leak2.txt
+  git config --unset secretguard.path
 
   rm .git/hooks/pre-commit
   if bash "$here/install_hooks.sh" --check 2>/dev/null; then fail "--check passed with a missing hook"; fi
