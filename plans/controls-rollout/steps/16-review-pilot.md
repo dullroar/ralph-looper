@@ -7,9 +7,9 @@ touches:
   - plans/controls-rollout/steps/16-review-pilot.md
 lane: none
 gate: python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave pilot && for h in '## Keep' '## Change' '## Library defects' '## Route evidence'; do grep -qx "$h" plans/controls-rollout/lessons/pilot.md || exit 1; done && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "gate passed 2026-11-24: fanout verify 2/2, four headings present in lessons/pilot.md, check_context.py ok, git diff --check clean"
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T02:37:23Z"
+evidence: gate passed 2026-11-24 (driver-verified)
 ---
 
 # Review the `pilot` wave and write its lessons
