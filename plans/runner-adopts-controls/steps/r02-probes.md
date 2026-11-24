@@ -1,13 +1,13 @@
 ---
 id: r02-probes
-status: pending
+status: done
 depends_on: [r01-adopt]
 touches:
   - docs/controls-adoption.md
   - plans/runner-adopts-controls/steps/r02-probes.md
 lane: none
 gate: python3 scripts/check_context.py && git check-ignore -q .probe/x && grep -q '^## Probes' docs/controls-adoption.md && for id in markdown.local-links context.index-freshness plans.schema security.secrets repo.forbidden-artifacts; do grep -q "$id" docs/controls-adoption.md || exit 1; done && git diff --check
-evidence: ""
+evidence: "Five planted defects each failed in .probe/copy with exit 1 and the expected rule ID; the clean copy passed. The shim also exited 1 on the step without a gate. Record: docs/controls-adoption.md, section Probes."
 ---
 
 # Probe the controls
