@@ -1,6 +1,6 @@
 ---
 id: 36-final-audit
-status: pending
+status: in_progress
 depends_on: [34-apply-enforcement, 35-route-report]
 touches:
   - plans/controls-rollout/final-audit.md
@@ -41,4 +41,10 @@ If you cannot finish, write "Resume notes" below. Keep the status `in_progress`.
 
 ## Resume notes
 
-(none)
+Partial. `plans/controls-rollout/final-audit.md` is written (adoption matrix, baseline comparison, route summary, limits, backlog, archive step). The gate does not pass yet.
+
+- Blocker: `python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave fleet` exits 1. `lmdb-fs: plan/adopt-controls differs from the recorded plan SHA` (7 of 8 pass). The other six waves verify. The check, the record check, `check_context.py` and the file test pass.
+- Why I stopped: the fix is in the `lmdb-fs` repository or in the operator's wave record. Both are outside `touches`, and the agent session cannot read other repositories. The operator must find the new commits on `plan/adopt-controls` in `lmdb-fs` (probably the `!controls.toml` fix from the fleet lessons) and record them with `fanout.py amend`, or re-record the SHA. Then run the gate again. Backlog item B13.
+- Not done: a live re-run of the context check in the other repositories (commands outside this worktree were denied). Section 3 of the audit uses the review records and says so.
+- Also in the audit: step 09 is `done` but ralph-looper has no `controls.toml` or `docs/controls-adoption.md` (B1).
+- When the gate passes: set `status: done`, fill `evidence`, and update section 3 of `final-audit.md` and B13 in the same commit.
