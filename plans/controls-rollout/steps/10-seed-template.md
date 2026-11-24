@@ -1,6 +1,6 @@
 ---
 id: 10-seed-template
-status: pending
+status: done
 depends_on: [08-record-pin]
 touches:
   - plans/controls-rollout/seeds/template/**
@@ -9,7 +9,7 @@ lane: none
 gate: python3 lib/fanout.py ready --plan-dir plans/controls-rollout --wave template && python3 scripts/check_context.py && git diff --check
 claimed_by: ""
 claimed_at: ""
-evidence: ""
+evidence: "gate (fanout.py ready --wave template && check_context.py && git diff --check): repo-template ready, seed adopt-controls, 6 pending steps; all checks ok; 2026-11-24 UTC"
 ---
 
 # Write the seed for the `template` wave
@@ -24,7 +24,15 @@ The gate runs `lib/fanout.py ready`. It checks each target and runs the target's
 
 ## Notes
 
-(none)
+Differences from the spec [template.md](../child-specs/template.md), with the reason:
+
+- Added step `m00-secret-guard`. The child plan contract needs the secret guard, the hooks and a blocking CI step in the first adoption commit. The template has none of them. The spec has no step for this. `m01` and `m02` depend on `m00`. The three reference files are in `seeds/template/reference/`. They equal the runner copies on 2026-11-24.
+- `m01` also touches `.github/workflows/context.yml`. `adopt apply` writes a `controls` job there. `m03` then sets the final form. `m00`, `m01` and `m03` run one after the other, so there is no overlap.
+- `m02` also touches `plans/AGENTS.md` and `docs/README.md` (the docs index is edited by hand). `m05` also touches `docs/README.md`. They run one after the other.
+- `m03` has its own test, `tests/test_workflow.py`, for the workflow rules. The spec has no test for it.
+- `m04` touches the old scripts that it deletes (lessons: `controls.md`, first "Change" rule) and `scripts/AGENTS.md`. Every step text tells the agent to run the full unit suite (second rule).
+- `docs/routing.md` text is written in `m02` from the routing policy facts, without the `local` route (owner decision 2026-11-23). The seed links only the public URL.
+- No step uses `agent: local`. No step compares wheel digests.
 
 ## Do not change
 
