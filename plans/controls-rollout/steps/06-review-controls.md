@@ -7,9 +7,9 @@ touches:
   - plans/controls-rollout/steps/06-review-controls.md
 lane: none
 gate: python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave controls && for h in '## Keep' '## Change' '## Library defects' '## Route evidence'; do grep -qx "$h" plans/controls-rollout/lessons/controls.md || exit 1; done && python3 scripts/check_context.py && git diff --check
-claimed_by: ""
-claimed_at: ""
-evidence: "gate (fanout verify, four lesson headings, check_context.py, git diff --check) passed 2026-11-24"
+claimed_by: claude cli-default
+claimed_at: "2026-11-24T01:36:37Z"
+evidence: gate passed 2026-11-24 (driver-verified)
 ---
 
 # Review the `controls` wave and write its lessons
