@@ -1,6 +1,6 @@
 ---
 id: 16-review-pilot
-status: pending
+status: done
 depends_on: [15-run-pilot]
 touches:
   - plans/controls-rollout/lessons/pilot.md
@@ -9,7 +9,7 @@ lane: none
 gate: python3 lib/fanout.py verify --plan-dir plans/controls-rollout --wave pilot && for h in '## Keep' '## Change' '## Library defects' '## Route evidence'; do grep -qx "$h" plans/controls-rollout/lessons/pilot.md || exit 1; done && python3 scripts/check_context.py && git diff --check
 claimed_by: ""
 claimed_at: ""
-evidence: ""
+evidence: "gate passed 2026-11-24: fanout verify 2/2, four headings present in lessons/pilot.md, check_context.py ok, git diff --check clean"
 ---
 
 # Review the `pilot` wave and write its lessons
@@ -31,7 +31,9 @@ Write `lessons/pilot.md` with exactly these four headings, in this order:
 
 Record for each target: the final plan commit, the gate results with counts, and the UTC date.
 
-(fill in)
+- `metadata_driven_gx`: final plan commit `ff0ef1e7bfca4b61a92e9583f9329cf3d1ef7432`. `verify`: verified done. 2026-11-24 (UTC).
+- `duckdb-fs`: final plan commit `bd785ee38c767fab5bfb871a5ad28a45669df5cd`. `verify`: verified done. 2026-11-24 (UTC).
+- `verify: 2/2 targets pass`. Probe and rollback details are in `lessons/pilot.md`.
 
 ## Do not change
 
